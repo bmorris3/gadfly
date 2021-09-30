@@ -3,10 +3,7 @@ gadfly Documentation
 
 This is the documentation for gadfly.
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Contents:
-
+.. automodapi:: gadfly
 
 
 Indices and tables
