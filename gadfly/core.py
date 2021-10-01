@@ -67,15 +67,15 @@ def generate_solar_fluxes(duration, cadence=60 * u.s, seed=None):
 
     kernel = (
         # Granulation terms
-        terms.SHOTerm(S0=params[0, 0], w0=1e-6 * params[0, 1],
+        terms.SHOTerm(S0=params[0, 0] * 1e-6, w0=1e-6 * params[0, 1],
                       Q=params[0, 2]) +
-        terms.SHOTerm(S0=params[1, 0], w0=1e-6 * params[1, 1],
+        terms.SHOTerm(S0=params[1, 0] * 1e-6, w0=1e-6 * params[1, 1],
                       Q=params[1, 2])
     )
 
     for term in range(2, nterms):
         # p-mode terms
-        kernel += terms.SHOTerm(S0=params[term, 0], w0=params[term, 1],
+        kernel += terms.SHOTerm(S0=params[term, 0] * 1e-6, w0=params[term, 1],
                                 Q=params[term, 2])
 
     gp = GaussianProcess(kernel)
@@ -252,15 +252,18 @@ def generate_stellar_fluxes(duration, M, T_eff, R, L, cadence=60 * u.s,
 
     kernel = (
         # Granulation terms
-        terms.SHOTerm(S0=params[0, 0], w0=1e-6 * params[0, 1],
+        terms.SHOTerm(S0=params[0, 0] * 1e-6,
+                      w0=1e-6 * params[0, 1],
                       Q=params[0, 2]) +
-        terms.SHOTerm(S0=params[1, 0], w0=1e-6 * params[1, 1],
+        terms.SHOTerm(S0=params[1, 0] * 1e-6,
+                      w0=1e-6 * params[1, 1],
                       Q=params[1, 2])
     )
 
     for term in range(2, nterms):
         # p-mode terms
-        kernel += terms.SHOTerm(S0=params[term, 0], w0=params[term, 1],
+        kernel += terms.SHOTerm(S0=params[term, 0] * 1e-6,
+                                w0=params[term, 1],
                                 Q=params[term, 2])
 
     gp = GaussianProcess(kernel)
