@@ -1,6 +1,5 @@
 import numpy as np
-import celerite
-from celerite import terms
+from celerite2 import terms, GaussianProcess
 import astropy.units as u
 from astropy.constants import L_sun, M_sun, R_sun
 import os
@@ -9,7 +8,8 @@ __all__ = ['generate_solar_fluxes', 'generate_stellar_fluxes']
 
 dirname = os.path.dirname(os.path.abspath(__file__))
 PARAM_VECTOR = np.loadtxt(
-    os.path.join(dirname, 'data', 'parameter_vector.txt'))
+    os.path.join(dirname, 'data', 'parameter_vector.txt')
+)
 
 
 def _process_inputs(duration, cadence, T_eff):
@@ -48,7 +48,7 @@ def generate_solar_fluxes(duration, cadence=60 * u.s, seed=None):
         Array of times at cadence ``cadence`` of length ``duration/cadence``
     fluxes : `~numpy.ndarray`
         Array of fluxes at cadence ``cadence`` of length ``duration/cadence``
-    kernel : `~celerite.terms.TermSum`
+    kernel : `~celerite2.terms.TermSum`
         Celerite kernel used to approximate the solar power spectrum.
     """
     if seed is not None:
@@ -60,17 +60,25 @@ def generate_solar_fluxes(duration, cadence=60 * u.s, seed=None):
     # Assemble celerite kernel
     ##########################
     parameter_vector = np.copy(PARAM_VECTOR)
+    nterms = len(parameter_vector) // 3
+    params = parameter_vector.reshape((nterms, 3))
 
     nterms = len(parameter_vector) // 3
 
-    kernel = terms.SHOTerm(log_S0=0, log_omega0=0, log_Q=0)
+    kernel = (
+        # Granulation terms
+        terms.SHOTerm(S0=params[0, 0], w0=1e-6 * params[0, 1],
+                      Q=params[0, 2]) +
+        terms.SHOTerm(S0=params[1, 0], w0=1e-6 * params[1, 1],
+                      Q=params[1, 2])
+    )
 
-    for term in range(nterms - 1):
-        kernel += terms.SHOTerm(log_S0=0, log_omega0=0, log_Q=0)
+    for term in range(2, nterms):
+        # p-mode terms
+        kernel += terms.SHOTerm(S0=params[term, 0], w0=params[term, 1],
+                                Q=params[term, 2])
 
-    kernel.set_parameter_vector(parameter_vector)
-
-    gp = celerite.GP(kernel)
+    gp = GaussianProcess(kernel)
 
     times = np.arange(0, duration.to(u.s).value, cadence.to(u.s).value) * u.s
     x = times.value
@@ -90,8 +98,8 @@ def generate_solar_fluxes(duration, cadence=60 * u.s, seed=None):
 
 @u.quantity_input(duration=u.s, cadence=u.s, M=u.kg, T_eff=u.K, L=u.W, R=u.m)
 def generate_stellar_fluxes(duration, M, T_eff, R, L, cadence=60 * u.s,
-                            frequencies=None, log_amplitudes=None,
-                            log_mode_lifetimes=None, seed=None):
+                            frequencies=None, amplitudes=None,
+                            mode_lifetimes=None, seed=None):
     """
     Generate an array of fluxes with zero mean which mimic the power spectrum of
     the SOHO/VIRGO SPM observations, scaled for a star with a given mass,
@@ -114,10 +122,10 @@ def generate_stellar_fluxes(duration, M, T_eff, R, L, cadence=60 * u.s,
     frequencies : `~numpy.ndarray` or None
         p-mode frequencies in the power spectrum in units of microHertz.
         Defaults to scaled solar values.
-    log_amplitudes : `~numpy.ndarray` or None
+    amplitudes : `~numpy.ndarray` or None
         p-mode amplitudes in the power spectrum. Defaults to scaled solar
         values.
-    log_mode_lifetimes : `~numpy.ndarray` or None
+    mode_lifetimes : `~numpy.ndarray` or None
         p-mode lifetimes in the power spectrum. Defaults to scaled solar
         values.
     seed : float, optional
@@ -129,7 +137,7 @@ def generate_stellar_fluxes(duration, M, T_eff, R, L, cadence=60 * u.s,
         Array of times at cadence ``cadence`` of size ``duration/cadence``
     fluxes : `~numpy.ndarray`
         Array of fluxes at cadence ``cadence`` of size ``duration/cadence``
-    kernel : `~celerite.terms.TermSum`
+    kernel : `~celerite2.terms.TermSum`
         Celerite kernel used to approximate the stellar power spectrum
     """
     if seed is not None:
@@ -146,8 +154,8 @@ def generate_stellar_fluxes(duration, M, T_eff, R, L, cadence=60 * u.s,
 
         # Scale frequencies
 
-        tunable_amps = np.exp(parameter_vector[::3][2:])
-        tunable_freqs = np.exp(parameter_vector[2::3][2:]) * 1e6 / 2 / np.pi
+        tunable_amps = parameter_vector[::3][2:]
+        tunable_freqs = parameter_vector[2::3][2:] * 1e6 / 2 / np.pi
         peak_ind = np.argmax(tunable_amps)
         peak_freq = tunable_freqs[peak_ind]  # 3090 uHz in Huber 2011
         delta_freqs = tunable_freqs - peak_freq
@@ -165,15 +173,15 @@ def generate_stellar_fluxes(duration, M, T_eff, R, L, cadence=60 * u.s,
 
         new_freqs = new_peak_freq + new_delta_freqs
 
-        new_log_omegas = np.log(2 * np.pi * new_freqs * 1e-6).value
+        new_omegas = 2 * np.pi * new_freqs * 1e-6
 
-        parameter_vector[2::3][2:] = new_log_omegas
+        parameter_vector[2::3][2:] = new_omegas
 
         #############################################
         # Scale mode lifetimes of p-mode oscillations
         #############################################
 
-        q = np.exp(parameter_vector[1::3][2:])
+        q = parameter_vector[1::3][2:]
         fwhm = 1 / (2 * np.pi * q)
 
         # From Enrico Corsaro (private communication), see Figure 7 of Corsaro 2015,
@@ -184,8 +192,8 @@ def generate_stellar_fluxes(duration, M, T_eff, R, L, cadence=60 * u.s,
             ln_FWHM(np.max([T_eff.value, 4900])))
 
         scaled_fwhm = fwhm * fwhm_scale
-        scaled_lnq = np.log(1 / (2 * np.pi * scaled_fwhm))
-        parameter_vector[1::3][2:] = scaled_lnq
+        scaled_q = 1 / (2 * np.pi * scaled_fwhm)
+        parameter_vector[1::3][2:] = scaled_q
 
         ##############################################################
         # Scale amplitudes of p-mode oscillations following Huber 2011
@@ -205,8 +213,7 @@ def generate_stellar_fluxes(duration, M, T_eff, R, L, cadence=60 * u.s,
                          ((M_sun / M_sun) ** t * 5777 ** (r - 1) * c_sun))
         pmode_amp_factor = pmode_amp_star / pmode_amp_sun
 
-        new_pmode_amps = np.log(np.exp(parameter_vector[0::3][2:]) *
-                                pmode_amp_factor)  # * fwhm_scale
+        new_pmode_amps = parameter_vector[0::3][2:] * pmode_amp_factor
 
         parameter_vector[0::3][2:] = new_pmode_amps
 
@@ -216,38 +223,42 @@ def generate_stellar_fluxes(duration, M, T_eff, R, L, cadence=60 * u.s,
 
         # Kallinger 2014 pg 12:
         tau_eff_factor = (new_peak_freq / peak_freq) ** -0.89
-        parameter_vector[2] = np.log(
-            np.exp(parameter_vector[2]) / tau_eff_factor)
-        parameter_vector[5] = np.log(
-            np.exp(parameter_vector[5]) / tau_eff_factor)
+        parameter_vector[2] = parameter_vector[2] / tau_eff_factor
+        parameter_vector[5] = parameter_vector[5] / tau_eff_factor
         # Kjeldsen & Bedding (2011):
         granulation_amplitude_factor = (new_peak_freq / peak_freq) ** -2
-        parameter_vector[0] = np.log(np.exp(parameter_vector[0]) *
-                                     granulation_amplitude_factor)
-        parameter_vector[3] = np.log(np.exp(parameter_vector[3]) *
-                                     granulation_amplitude_factor)
-
+        parameter_vector[0] = (parameter_vector[0] *
+                               granulation_amplitude_factor)
+        parameter_vector[3] = (parameter_vector[3] *
+                               granulation_amplitude_factor)
+        print(parameter_vector)
     else:
 
-        log_omegas = np.log(2 * np.pi * frequencies * 1e-6)
-        custom_params = np.vstack([log_amplitudes, log_mode_lifetimes,
-                                   log_omegas]).T.ravel()
+        omegas = 2 * np.pi * frequencies * 1e-6
+        custom_params = np.vstack([amplitudes, mode_lifetimes,
+                                   omegas]).T.ravel()
         parameter_vector = np.concatenate([PARAM_VECTOR[:6], custom_params])
 
     ##########################
     # Assemble celerite kernel
     ##########################
-
+    params = parameter_vector.reshape((-1, 3))
     nterms = len(parameter_vector) // 3
 
-    kernel = terms.SHOTerm(log_S0=0, log_omega0=0, log_Q=0)
+    kernel = (
+        # Granulation terms
+        terms.SHOTerm(S0=params[0, 0], w0=1e-6 * params[0, 1],
+                      Q=params[0, 2]) +
+        terms.SHOTerm(S0=params[1, 0], w0=1e-6 * params[1, 1],
+                      Q=params[1, 2])
+    )
 
-    for term in range(nterms - 1):
-        kernel += terms.SHOTerm(log_S0=0, log_omega0=0, log_Q=0)
+    for term in range(2, nterms):
+        # p-mode terms
+        kernel += terms.SHOTerm(S0=params[term, 0], w0=params[term, 1],
+                                Q=params[term, 2])
 
-    kernel.set_parameter_vector(parameter_vector)
-
-    gp = celerite.GP(kernel)
+    gp = GaussianProcess(kernel)
 
     times = np.arange(0, duration.to(u.s).value, cadence.to(u.s).value) * u.s
     x = times.value

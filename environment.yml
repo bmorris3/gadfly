@@ -5,3 +5,4 @@ dependencies:
   - astropy
   - pip:
     - pytest-astropy
+    - celerite2
