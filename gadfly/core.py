@@ -165,8 +165,9 @@ def generate_stellar_fluxes(duration, M, T_eff, R, L, cadence=60 * u.s,
         # Huber 2012 Eqn 3
         delta_nu_factor = (M / M_sun) ** 0.5 * (R / R_sun) ** (-3 / 2)
         # Huber 2012 Eqn 4
-        nu_factor = (M / M_sun) * (R / R_sun) ** -2 * (
-                    T_eff / T_eff_solar) ** -0.5
+        nu_factor = (
+            (M / M_sun) * (R / R_sun) ** -2 * (T_eff / T_eff_solar) ** -0.5
+        )
 
         new_peak_freq = nu_factor * peak_freq
         new_delta_freqs = delta_freqs * delta_nu_factor
@@ -186,10 +187,14 @@ def generate_stellar_fluxes(duration, M, T_eff, R, L, cadence=60 * u.s,
 
         # From Enrico Corsaro (private communication), see Figure 7 of Corsaro 2015,
         # where X is T_eff.
-        ln_FWHM = lambda X: (1463.49 - 1.03503 * X + 0.000271565 * X ** 2 -
-                             3.14139e-08 * X ** 3 + 1.35524e-12 * X ** 4)
-        fwhm_scale = np.exp(ln_FWHM(5777)) / np.exp(
-            ln_FWHM(np.max([T_eff.value, 4900])))
+        def ln_FWHM(X):
+            return (1463.49 - 1.03503 * X + 0.000271565 * X ** 2 -
+                    3.14139e-08 * X ** 3 + 1.35524e-12 * X ** 4)
+
+        fwhm_scale = (
+            np.exp(ln_FWHM(5777)) /
+            np.exp(ln_FWHM(np.max([T_eff.value, 4900])))
+        )
 
         scaled_fwhm = fwhm * fwhm_scale
         scaled_q = 1 / (2 * np.pi * scaled_fwhm)
