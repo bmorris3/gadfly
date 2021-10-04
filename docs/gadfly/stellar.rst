@@ -9,6 +9,7 @@ Sun-like star spanning 100 days of observations:
 
     from gadfly import generate_stellar_fluxes
     import astropy.units as u
+    import matplotlib.pyplot as plt
 
     time, flux, kernel = generate_stellar_fluxes(
         duration=100 * u.day,
@@ -30,6 +31,8 @@ Sun-like star spanning 100 days of observations:
 
     from gadfly import generate_stellar_fluxes
     import astropy.units as u
+    import matplotlib.pyplot as plt
+    import numpy as np
 
     time, flux, kernel = generate_stellar_fluxes(
         duration=100 * u.day,
@@ -52,7 +55,7 @@ and let's plot the power spectrum of those simulated observations:
 .. code-block:: python
 
     from gadfly.psd import power_spectrum
-    import matplotlib.pyplot as plt
+    import numpy as np
 
     freq, power = power_spectrum(flux)
 
@@ -65,7 +68,7 @@ and let's plot the power spectrum of those simulated observations:
     plt.ylim([1e-7, 1e3])
     plt.legend()
     plt.gca().set(
-        xlabel='Freq [$\mu$Hz]', ylabel='Power [ppm$^2$ Hz$^{-1}$]'
+        xlabel='Freq [$\\mu$Hz]', ylabel='Power [ppm$^2$ $\\mu$Hz$^{-1}$]'
     )
     plt.show()
 
@@ -73,6 +76,8 @@ and let's plot the power spectrum of those simulated observations:
 
     from gadfly import generate_stellar_fluxes
     import astropy.units as u
+    import matplotlib.pyplot as plt
+    import numpy as np
 
     time, flux, kernel = generate_stellar_fluxes(
         duration=100 * u.day,
@@ -97,6 +102,6 @@ and let's plot the power spectrum of those simulated observations:
     plt.ylim([1e-7, 1e3])
     plt.legend()
     plt.gca().set(
-        xlabel='Freq [$\mu$Hz]', ylabel='Power [ppm$^2$ Hz$^{-1}$]'
+        xlabel='Freq [$\\mu$Hz]', ylabel='Power [ppm$^2$ $\\mu$Hz$^{-1}$]'
     )
     plt.show()

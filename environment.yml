@@ -6,3 +6,4 @@ dependencies:
   - pip:
     - pytest-astropy
     - celerite2
+    - matplotlib

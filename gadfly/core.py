@@ -249,8 +249,6 @@ def generate_stellar_fluxes(duration, M, T_eff, R, L, cadence=60 * u.s,
     ##########################
     # Assemble celerite kernel
     ##########################
-
-
     kernel = (
         # Granulation terms
         terms.SHOTerm(S0=params[0, 0] * 1e-6,
