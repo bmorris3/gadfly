@@ -35,20 +35,20 @@ def generate_solar_fluxes(duration, cadence=60 * u.s, seed=None):
 
     Parameters
     ----------
-    duration : `~astropy.units.Quantity`
+    duration : ~astropy.units.Quantity
         Duration of simulated observations to generate.
-    cadence : `~astropy.units.Quantity`
+    cadence : ~astropy.units.Quantity
         Length of time between fluxes
     seed : float, optional
         Random seed.
 
     Returns
     -------
-    times : `~astropy.units.Quantity`
+    times : astropy.units.Quantity
         Array of times at cadence ``cadence`` of length ``duration/cadence``
-    fluxes : `~numpy.ndarray`
+    fluxes : numpy.ndarray
         Array of fluxes at cadence ``cadence`` of length ``duration/cadence``
-    kernel : `~celerite2.terms.TermSum`
+    kernel : celerite2.terms.TermSum
         Celerite kernel used to approximate the solar power spectrum.
     """
     if seed is not None:
@@ -107,25 +107,25 @@ def generate_stellar_fluxes(duration, M, T_eff, R, L, cadence=60 * u.s,
 
     Parameters
     ----------
-    duration : `~astropy.units.Quantity`
+    duration : ~astropy.units.Quantity
         Duration of simulated observations to generate.
-    M : `~astropy.units.Quantity`
+    M : ~astropy.units.Quantity
         Stellar mass
-    T_eff : `~astropy.units.Quantity`
+    T_eff : ~astropy.units.Quantity
         Stellar effective temperature
-    R : `~astropy.units.Quantity`
+    R : ~astropy.units.Quantity
         Stellar radius
-    L : `~astropy.units.Quantity`
+    L : ~astropy.units.Quantity
         Stellar luminosity
-    cadence : `~astropy.units.Quantity`
+    cadence : ~astropy.units.Quantity
         Length of time between fluxes
-    frequencies : `~numpy.ndarray` or None
+    frequencies : ~numpy.ndarray or None
         p-mode frequencies in the power spectrum in units of microHertz.
         Defaults to scaled solar values.
-    amplitudes : `~numpy.ndarray` or None
+    amplitudes : ~numpy.ndarray or None
         p-mode amplitudes in the power spectrum. Defaults to scaled solar
         values.
-    mode_lifetimes : `~numpy.ndarray` or None
+    mode_lifetimes : ~numpy.ndarray or None
         p-mode lifetimes in the power spectrum. Defaults to scaled solar
         values.
     seed : float, optional
@@ -133,11 +133,11 @@ def generate_stellar_fluxes(duration, M, T_eff, R, L, cadence=60 * u.s,
 
     Returns
     -------
-    times : `~astropy.units.Quantity`
+    times : astropy.units.Quantity
         Array of times at cadence ``cadence`` of size ``duration/cadence``
-    fluxes : `~numpy.ndarray`
+    fluxes : numpy.ndarray
         Array of fluxes at cadence ``cadence`` of size ``duration/cadence``
-    kernel : `~celerite2.terms.TermSum`
+    kernel : celerite2.terms.TermSum
         Celerite kernel used to approximate the stellar power spectrum
     """
     if seed is not None:
