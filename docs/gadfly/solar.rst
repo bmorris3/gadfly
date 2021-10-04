@@ -1,11 +1,6 @@
-gadfly Documentation
-====================
-
-This is the documentation for gadfly, a package for generating photometry of
-stars with granulation and p-mode oscillations.
-
-Basic Usage
-^^^^^^^^^^^
+=======================================
+Solar-like oscillations and granulation
+=======================================
 
 Let's synthesize a time series of 60-second cadence observations of the Sun
 spanning 100 days of observations:
@@ -18,6 +13,29 @@ spanning 100 days of observations:
     time, flux, kernel = generate_solar_fluxes(
         duration=100 * u.day, cadence=60 * u.s
     )
+
+    plt.plot(time.to(u.day).value, 1e6 * flux, '.k')
+    plt.gca().set(
+        xlabel='Time [d]', ylabel='Flux [ppm]'
+    )
+    plt.show()
+
+
+.. plot::
+
+    from gadfly import generate_solar_fluxes
+    import astropy.units as u
+
+    time, flux, kernel = generate_solar_fluxes(
+        duration=100 * u.day, cadence=60 * u.s
+    )
+
+    plt.plot(time.to(u.day).value, 1e6 * flux, '.k')
+    plt.gca().set(
+        xlabel='Time [d]', ylabel='Flux [ppm]'
+    )
+    plt.show()
+
 
 and let's plot the power spectrum of those simulated observations:
 
@@ -67,26 +85,3 @@ and let's plot the power spectrum of those simulated observations:
         xlabel='Freq [$\mu$Hz]', ylabel='Power [ppm$^2$ Hz$^{-1}$]'
     )
     plt.show()
-
-
-Tutorials
-^^^^^^^^^
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Contents:
-
-   gadfly/solar.rst
-   gadfly/stellar.rst
-
-
-
-.. automodapi:: gadfly
-
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`

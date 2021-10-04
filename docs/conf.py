@@ -34,6 +34,7 @@ extensions = [
     'sphinx.ext.mathjax',
     'sphinx_automodapi.automodapi',
     'sphinx_automodapi.smart_resolver',
+    "matplotlib.sphinxext.plot_directive"
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -54,7 +55,12 @@ master_doc = 'index'
 # -- Options for intersphinx extension ---------------------------------------
 
 # Example configuration for intersphinx: refer to the Python standard library.
-intersphinx_mapping = {'https://docs.python.org/': None}
+intersphinx_mapping = {
+    'https://docs.python.org/': None,
+    'numpy': ('https://numpy.org/doc/stable/', None),
+    'celerite2': ('https://celerite2.readthedocs.io/en/latest/', None),
+    'astropy': ('https://docs.astropy.org/en/stable/', None)
+}
 
 # -- Options for HTML output -------------------------------------------------
 

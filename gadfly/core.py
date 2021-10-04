@@ -143,6 +143,10 @@ def generate_stellar_fluxes(duration, M, T_eff, R, L, cadence=60 * u.s,
     if seed is not None:
         np.random.seed(seed)
 
+    parameter_vector = np.copy(PARAM_VECTOR)
+    params = parameter_vector.reshape((-1, 3))
+    nterms = len(parameter_vector) // 3
+
     _process_inputs(duration, cadence, T_eff)
 
     if frequencies is None:
@@ -150,12 +154,11 @@ def generate_stellar_fluxes(duration, M, T_eff, R, L, cadence=60 * u.s,
         ##########################
         # Scale p-mode frequencies
         ##########################
-        parameter_vector = np.copy(PARAM_VECTOR)
 
         # Scale frequencies
 
         tunable_amps = parameter_vector[::3][2:]
-        tunable_freqs = parameter_vector[2::3][2:] * 1e6 / 2 / np.pi
+        tunable_freqs = parameter_vector[1::3][2:] / 2 / np.pi
         peak_ind = np.argmax(tunable_amps)
         peak_freq = tunable_freqs[peak_ind]  # 3090 uHz in Huber 2011
         delta_freqs = tunable_freqs - peak_freq
@@ -169,20 +172,19 @@ def generate_stellar_fluxes(duration, M, T_eff, R, L, cadence=60 * u.s,
             (M / M_sun) * (R / R_sun) ** -2 * (T_eff / T_eff_solar) ** -0.5
         )
 
-        new_peak_freq = nu_factor * peak_freq
-        new_delta_freqs = delta_freqs * delta_nu_factor
+        new_peak_freq = float(nu_factor) * peak_freq
+        new_delta_freqs = delta_freqs * float(delta_nu_factor)
 
         new_freqs = new_peak_freq + new_delta_freqs
 
-        new_omegas = 2 * np.pi * new_freqs * 1e-6
-
-        parameter_vector[2::3][2:] = new_omegas
+        new_omegas = 2 * np.pi * new_freqs
+        parameter_vector[1::3][2:] = new_omegas
 
         #############################################
         # Scale mode lifetimes of p-mode oscillations
         #############################################
 
-        q = parameter_vector[1::3][2:]
+        q = parameter_vector[2::3][2:]
         fwhm = 1 / (2 * np.pi * q)
 
         # From Enrico Corsaro (private communication), see Figure 7 of Corsaro 2015,
@@ -198,7 +200,7 @@ def generate_stellar_fluxes(duration, M, T_eff, R, L, cadence=60 * u.s,
 
         scaled_fwhm = fwhm * fwhm_scale
         scaled_q = 1 / (2 * np.pi * scaled_fwhm)
-        parameter_vector[1::3][2:] = scaled_q
+        parameter_vector[2::3][2:] = scaled_q
 
         ##############################################################
         # Scale amplitudes of p-mode oscillations following Huber 2011
@@ -236,7 +238,7 @@ def generate_stellar_fluxes(duration, M, T_eff, R, L, cadence=60 * u.s,
                                granulation_amplitude_factor)
         parameter_vector[3] = (parameter_vector[3] *
                                granulation_amplitude_factor)
-        print(parameter_vector)
+
     else:
 
         omegas = 2 * np.pi * frequencies * 1e-6
@@ -247,8 +249,7 @@ def generate_stellar_fluxes(duration, M, T_eff, R, L, cadence=60 * u.s,
     ##########################
     # Assemble celerite kernel
     ##########################
-    params = parameter_vector.reshape((-1, 3))
-    nterms = len(parameter_vector) // 3
+
 
     kernel = (
         # Granulation terms
