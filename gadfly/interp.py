@@ -12,11 +12,11 @@ def interpolate_missing_data(times, fluxes, cadences=None):
 
     Parameters
     ----------
-    times : numpy.ndarray
+    times : ~numpy.ndarray
         Incomplete but otherwise uniformly sampled times
-    fluxes : numpy.ndarray
+    fluxes : ~numpy.ndarray
         Flux for each time in ``times``
-    cadences : numpy.ndarray, optional
+    cadences : ~numpy.ndarray, optional
         Integer cadence number of each observation.
 
     Returns

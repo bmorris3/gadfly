@@ -16,9 +16,9 @@ def power_spectrum(fluxes, d=60):
 
     Returns
     -------
-    freq : ~numpy.ndarray
+    freq : numpy.ndarray
         Frequencies
-    power : ~numpy.ndarray
+    power : numpy.ndarray
         Power at each frequency in units of [ppm^2 / microHz]
     """
     fft = np.fft.rfft(1e6 * fluxes)

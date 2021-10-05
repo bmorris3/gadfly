@@ -80,6 +80,7 @@ Tutorials
 
    gadfly/solar.rst
    gadfly/stellar.rst
+   gadfly/validation.rst
 
 
 .. automodapi:: gadfly
