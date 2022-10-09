@@ -22,7 +22,7 @@ scales correctly for solar twins using short-cadence observations from Kepler.
     from gadfly.psd import power_spectrum
     from gadfly.interp import interpolate_missing_data
 
-    # Store a table of stellar parameters from Mather et al. (2012), Gaia (2018)
+    # Store a table of stellar parameters from Mathur et al. (2012), Gaia (2018)
     stars = Table.read(
         """Star & $T_\mathrm{eff}$ [K] & $M$ [$M_\odot$] & $L$ [$L_\odot$] &  $R$ [$R_\odot$] & $K_P$
         KIC 3656476 & 5581 & 1.09 & 1.627 & 1.36 & 9.516
@@ -48,7 +48,7 @@ scales correctly for solar twins using short-cadence observations from Kepler.
         for lc in lcs:
             lc = lc.normalize().remove_nans()
 
-            t, f = interpolate_missing_data(lc.time.jd, lc.flux)
+            t, f = interpolate_missing_data(lc.time.jd, lc.flux.value)
             e = np.median(lc.flux_err) * np.ones_like(f)
 
             fit = np.polyval(np.polyfit(t - t.mean(), f, 5),
@@ -60,7 +60,7 @@ scales correctly for solar twins using short-cadence observations from Kepler.
         lc = LightCurveCollection(lcs_interped).stitch()
         t, f = interpolate_missing_data(lc.time.jd, lc.flux.value)
 
-        # Generate a stellar oscillation and p-mode kernel for the correct
+        # Generate a stellar oscillation and p-mode kernel for the correct
         # stellar parameters
         tm, fm, kernel = generate_stellar_fluxes(
             duration=1*u.day,
