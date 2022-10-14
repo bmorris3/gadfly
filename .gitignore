@@ -59,7 +59,6 @@ distribute-*.tar.gz
 .pydevproject
 .settings
 pip-wheel-metadata/
-notebooks/
 
 # Mac OSX
 .DS_Store
