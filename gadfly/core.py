@@ -1,283 +1,186 @@
-import numpy as np
-from celerite2 import terms, GaussianProcess
-import astropy.units as u
-from astropy.constants import L_sun, M_sun, R_sun
 import os
+import json
 
-__all__ = ['generate_solar_fluxes', 'generate_stellar_fluxes']
+import numpy as np
+from celerite2 import terms
+import astropy.units as u
+
+from gadfly import scale
+
+__all__ = [
+    'Hyperparameters', 'StellarOscillatorKernel', 'SolarOscillatorKernel'
+]
 
 dirname = os.path.dirname(os.path.abspath(__file__))
-PARAM_VECTOR = np.loadtxt(
-    os.path.join(dirname, 'data', 'parameter_vector.txt')
+default_hyperparameter_path = os.path.join(
+    dirname, 'data', 'hyperparameters.json'
 )
 
 
-def _process_inputs(duration, cadence, T_eff):
+class Hyperparameters(list):
     """
-    Check for sensible inputs.
-
-    Raises
-    ------
-    ValueError
-        If duration is less than or equal to the cadence.
+    Gaussian process hyperparameters for approximating
+    the total stellar irradiance power spectrum.
     """
-    if duration <= cadence:
-        raise ValueError("``duration`` must be longer than ``cadence``")
-    if T_eff is not None and T_eff < 4900 * u.K:
-        raise ValueError("Only valid for temperatures >4900 K.")
+    def __init__(self, hyperparameters, scale_factors=None):
+        """
+        Parameters
+        ----------
+        hyperparameters : list of dict
+            List of dictionaries containing hyperparameters. Each dict has two entries.
+            `"hyperparameters"` contains a dictionary with the keyword arguments that
+            must be passed to the celerite2 SHOTerm constructor. `"metadata"` is a
+            dictionary describing which hyperparameters were fixed in the fit.
+        scale_factors : dict
+            Scaling relation scale-factors to apply to solar hyperparameters.
+        """
+        # strip off metadata
+        super().__init__(hyperparameters)
+        self.scale_factors = scale_factors
 
+    def __repr__(self):
+        first = json.dumps(self[0], indent=2)
+        return f"<{self.__class__.__name__} (showing 1 of {len(self)}):\n[{first}...]>"
 
-@u.quantity_input(cadence=u.s, duration=u.s)
-def generate_solar_fluxes(duration, cadence=60 * u.s, seed=None):
-    """
-    Generate an array of fluxes with zero mean which mimic the power spectrum of
-    the SOHO/VIRGO SPM observations.
+    @staticmethod
+    def _load_from_json(path):
+        with open(path, 'r') as param_file:
+            hyperparameters = json.load(param_file)
+        return hyperparameters
 
-    Parameters
-    ----------
-    duration : ~astropy.units.Quantity
-        Duration of simulated observations to generate.
-    cadence : ~astropy.units.Quantity
-        Length of time between fluxes
-    seed : float, optional
-        Random seed.
+    @classmethod
+    def from_soho_virgo(cls, path=None):
+        """
+        Load the SOHO VIRGO/PMO6 total solar irradiance hyperparameters.
 
-    Returns
-    -------
-    times : astropy.units.Quantity
-        Array of times at cadence ``cadence`` of length ``duration/cadence``
-    fluxes : numpy.ndarray
-        Array of fluxes at cadence ``cadence`` of length ``duration/cadence``
-    kernel : celerite2.terms.TermSum
-        Celerite kernel used to approximate the solar power spectrum.
-    """
-    if seed is not None:
-        np.random.seed(seed)
+        Parameters
+        ----------
+        path : str or `None
+            Path to the solar hyperparameter JSON file. If `None`, loads
+            the default gadfly solar hyperparameter list.
+        """
+        if path is None:
+            path = default_hyperparameter_path
+        hyperparameters = cls._load_from_json(path)
 
-    _process_inputs(duration, cadence, 5777 * u.K)
+        return cls(hyperparameters)
 
-    ##########################
-    # Assemble celerite kernel
-    ##########################
-    parameter_vector = np.copy(PARAM_VECTOR)
-    nterms = len(parameter_vector) // 3
-    params = parameter_vector.reshape((nterms, 3))
-
-    nterms = len(parameter_vector) // 3
-
-    kernel = (
-        # Granulation terms
-        terms.SHOTerm(S0=params[0, 0] * 1e-6, w0=1e-6 * params[0, 1],
-                      Q=params[0, 2]) +
-        terms.SHOTerm(S0=params[1, 0] * 1e-6, w0=1e-6 * params[1, 1],
-                      Q=params[1, 2])
-    )
-
-    for term in range(2, nterms):
-        # p-mode terms
-        kernel += terms.SHOTerm(S0=params[term, 0] * 1e-6, w0=params[term, 1],
-                                Q=params[term, 2])
-
-    gp = GaussianProcess(kernel)
-
-    times = np.arange(0, duration.to(u.s).value, cadence.to(u.s).value) * u.s
-    x = times.value
-
-    gp.compute(x, check_sorted=False)
-
-    ###################################
-    # Get samples with the kernel's PSD
-    ###################################
-
-    y = gp.sample()
-    # Remove a linear trend:
-    y -= np.polyval(np.polyfit(x - x.mean(), y, 1), x - x.mean())
-
-    return times, y, kernel
-
-
-@u.quantity_input(duration=u.s, cadence=u.s, M=u.kg, T_eff=u.K, L=u.W, R=u.m)
-def generate_stellar_fluxes(duration, M, T_eff, R, L, cadence=60 * u.s,
-                            frequencies=None, amplitudes=None,
-                            mode_lifetimes=None, seed=None):
-    """
-    Generate an array of fluxes with zero mean which mimic the power spectrum of
-    the SOHO/VIRGO SPM observations, scaled for a star with a given mass,
-    effective temperature, luminosity and radius.
-
-    Parameters
-    ----------
-    duration : ~astropy.units.Quantity
-        Duration of simulated observations to generate.
-    M : ~astropy.units.Quantity
-        Stellar mass
-    T_eff : ~astropy.units.Quantity
-        Stellar effective temperature
-    R : ~astropy.units.Quantity
-        Stellar radius
-    L : ~astropy.units.Quantity
-        Stellar luminosity
-    cadence : ~astropy.units.Quantity
-        Length of time between fluxes
-    frequencies : ~numpy.ndarray or None
-        p-mode frequencies in the power spectrum in units of microHertz.
-        Defaults to scaled solar values.
-    amplitudes : ~numpy.ndarray or None
-        p-mode amplitudes in the power spectrum. Defaults to scaled solar
-        values.
-    mode_lifetimes : ~numpy.ndarray or None
-        p-mode lifetimes in the power spectrum. Defaults to scaled solar
-        values.
-    seed : float, optional
-        Random seed.
-
-    Returns
-    -------
-    times : astropy.units.Quantity
-        Array of times at cadence ``cadence`` of size ``duration/cadence``
-    fluxes : numpy.ndarray
-        Array of fluxes at cadence ``cadence`` of size ``duration/cadence``
-    kernel : celerite2.terms.TermSum
-        Celerite kernel used to approximate the stellar power spectrum
-    """
-    if seed is not None:
-        np.random.seed(seed)
-
-    parameter_vector = np.copy(PARAM_VECTOR)
-    params = parameter_vector.reshape((-1, 3))
-    nterms = len(parameter_vector) // 3
-
-    _process_inputs(duration, cadence, T_eff)
-
-    if frequencies is None:
-
-        ##########################
-        # Scale p-mode frequencies
-        ##########################
-
-        # Scale frequencies
-
-        tunable_amps = parameter_vector[::3][2:]
-        tunable_freqs = parameter_vector[1::3][2:] / 2 / np.pi
-        peak_ind = np.argmax(tunable_amps)
-        peak_freq = tunable_freqs[peak_ind]  # 3090 uHz in Huber 2011
-        delta_freqs = tunable_freqs - peak_freq
-
-        T_eff_solar = 5777 * u.K
-
-        # Huber 2012 Eqn 3
-        delta_nu_factor = (M / M_sun) ** 0.5 * (R / R_sun) ** (-3 / 2)
-        # Huber 2012 Eqn 4
-        nu_factor = (
-            (M / M_sun) * (R / R_sun) ** -2 * (T_eff / T_eff_solar) ** -0.5
+    @staticmethod
+    @u.quantity_input(mass=u.g, temperature=u.K, radius=u.m, luminosity=u.L_sun)
+    def _get_scale_factors(mass, temperature, radius, luminosity, quiet=False):
+        return dict(
+            p_mode_amps=scale.p_mode_amplitudes(mass, temperature, luminosity),
+            nu_max=scale.nu_max(mass, temperature, radius),
+            delta_nu=scale.delta_nu(mass, radius),
+            fwhm=scale.fwhm(temperature, quiet=quiet)
         )
 
-        new_peak_freq = float(nu_factor) * peak_freq
-        new_delta_freqs = delta_freqs * float(delta_nu_factor)
+    @classmethod
+    @u.quantity_input(mass=u.g, temperature=u.K, radius=u.m, luminosity=u.L_sun)
+    def for_star(cls, mass, temperature, radius, luminosity, quiet=False):
+        """
+        Applying scaling relations to the SOHO VIRGO/PMO6 total solar
+        irradiance hyperparameters for given stellar properties.
 
-        new_freqs = new_peak_freq + new_delta_freqs
-
-        new_omegas = 2 * np.pi * new_freqs
-        parameter_vector[1::3][2:] = new_omegas
-
-        #############################################
-        # Scale mode lifetimes of p-mode oscillations
-        #############################################
-
-        q = parameter_vector[2::3][2:]
-        fwhm = 1 / (2 * np.pi * q)
-
-        # From Enrico Corsaro (private communication), see Figure 7 of Corsaro 2015,
-        # where X is T_eff.
-        def ln_FWHM(X):
-            return (1463.49 - 1.03503 * X + 0.000271565 * X ** 2 -
-                    3.14139e-08 * X ** 3 + 1.35524e-12 * X ** 4)
-
-        fwhm_scale = (
-            np.exp(ln_FWHM(5777)) /
-            np.exp(ln_FWHM(np.max([T_eff.value, 4900])))
+        Parameters
+        ----------
+        mass : ~astropy.units.Quantity
+            Stellar mass
+        temperature : ~astropy.units.Quantity
+            Effective temperature
+        radius : ~astropy.units.Quantity
+            Stellar radius
+        luminosity : ~astropy.units.Quantity
+            Stellar luminosity
+        """
+        hyperparameters = cls._load_from_json(default_hyperparameter_path)
+        scale_factors = cls._get_scale_factors(
+            mass, temperature, radius, luminosity, quiet=quiet
         )
+        scaled_nu_max = scale._solar_nu_max * scale_factors['nu_max']
 
-        scaled_fwhm = fwhm * fwhm_scale
-        scaled_q = 1 / (2 * np.pi * scaled_fwhm)
-        parameter_vector[2::3][2:] = scaled_q
+        scaled_hyperparameters = []
+        for item in hyperparameters:
+            is_fixed_Q = 'Q' in item['metadata']['fixed_parameters']
 
-        ##############################################################
-        # Scale amplitudes of p-mode oscillations following Huber 2011
-        ##############################################################
+            # scale the hyperparameters for the low-frequency features:
+            if is_fixed_Q:
+                params = item['hyperparameters']
 
-        # Huber 2011 Eqn 8:
-        c = (T_eff / (5934 * u.K)) ** 0.8
-        c_sun = ((5777 * u.K) / (5934 * u.K)) ** 0.8
-        r = 2
-        s = 0.886
-        t = 1.89
+                # scale the granulation amplitudes
+                scale_S0 = params['S0'] * scale.granulation_amplitude(
+                    params['w0'] / (2*np.pi) * u.uHz, scaled_nu_max,
+                    mass, radius, temperature, luminosity
+                )
 
-        # Huber 2011 Eqn 9:
-        pmode_amp_star = (float(L / L_sun) ** s /
-                          (float(M / M_sun) ** t * T_eff.value ** (r - 1) * c))
-        pmode_amp_sun = ((L_sun / L_sun) ** s /
-                         ((M_sun / M_sun) ** t * 5777 ** (r - 1) * c_sun))
-        pmode_amp_factor = pmode_amp_star / pmode_amp_sun
+                # scale the timescales:
+                scaled_w0 = params['w0'] / scale.tau_gran(scaled_nu_max)
 
-        new_pmode_amps = parameter_vector[0::3][2:] * pmode_amp_factor
+                scaled_hyperparameters.append(
+                    dict(
+                        hyperparameters=dict(
+                            S0=scale_S0,
+                            w0=scaled_w0,
+                            Q=params['Q']),
+                        metadata=item['metadata']
+                    )
+                )
 
-        parameter_vector[0::3][2:] = new_pmode_amps
+            # scale the hyperparameters for the p-mode oscillations:
+            else:
+                params = item['hyperparameters']
 
-        #############################
-        # Scale granulation frequency
-        #############################
+                # scale the p-mode amplitudes
+                scaled_S0 = params['S0'] * scale_factors['p_mode_amps']
 
-        # Kallinger 2014 pg 12:
-        tau_eff_factor = (new_peak_freq / peak_freq) ** -0.89
-        parameter_vector[2] = parameter_vector[2] / tau_eff_factor
-        parameter_vector[5] = parameter_vector[5] / tau_eff_factor
-        # Kjeldsen & Bedding (2011):
-        granulation_amplitude_factor = (new_peak_freq / peak_freq) ** -2
-        parameter_vector[0] = (parameter_vector[0] *
-                               granulation_amplitude_factor)
-        parameter_vector[3] = (parameter_vector[3] *
-                               granulation_amplitude_factor)
+                # scale the p-mode frequencies
+                solar_delta_nu = (
+                    params['w0'] / (2 * np.pi) * u.uHz -
+                    scale._solar_nu_max
+                )
+                scaled_delta_nu = solar_delta_nu * scale_factors['delta_nu']
+                scaled_w0 = 2 * np.pi * (scaled_nu_max + scaled_delta_nu).to(u.uHz).value
 
-    else:
+                # scale the quality factors. The FWHM is proportional to the inverse of the
+                # Q factor, so we divide by the scale factor instead of multiplying it.
+                scaled_Q = params['Q'] / scale_factors['fwhm']
 
-        omegas = 2 * np.pi * frequencies * 1e-6
-        custom_params = np.vstack([amplitudes, mode_lifetimes,
-                                   omegas]).T.ravel()
-        parameter_vector = np.concatenate([PARAM_VECTOR[:6], custom_params])
+                scaled_hyperparameters.append(
+                    dict(
+                        hyperparameters=dict(
+                            S0=scaled_S0,
+                            w0=scaled_w0,
+                            Q=scaled_Q),
+                        metadata=item['metadata']
+                    )
+                )
 
-    ##########################
-    # Assemble celerite kernel
-    ##########################
-    kernel = (
-        # Granulation terms
-        terms.SHOTerm(S0=params[0, 0] * 1e-6,
-                      w0=1e-6 * params[0, 1],
-                      Q=params[0, 2]) +
-        terms.SHOTerm(S0=params[1, 0] * 1e-6,
-                      w0=1e-6 * params[1, 1],
-                      Q=params[1, 2])
-    )
+        return cls(scaled_hyperparameters, scale_factors)
 
-    for term in range(2, nterms):
-        # p-mode terms
-        kernel += terms.SHOTerm(S0=params[term, 0] * 1e-6,
-                                w0=params[term, 1],
-                                Q=params[term, 2])
 
-    gp = GaussianProcess(kernel)
+class StellarOscillatorKernel(terms.TermSum):
+    """
+    A sum of simple harmonic oscillator kernels generated by gadfly to
+    approximate the total solar irradiance power spectrum.
+    """
 
-    times = np.arange(0, duration.to(u.s).value, cadence.to(u.s).value) * u.s
-    x = times.value
+    def __init__(self, hyperparameters):
+        self.hyperparameters = hyperparameters
 
-    gp.compute(x, check_sorted=False)
+        kernel_components = [
+            terms.SHOTerm(**p['hyperparameters']) for p in self.hyperparameters
+        ]
 
-    ###################################
-    # Get samples with the kernel's PSD
-    ###################################
+        super().__init__(*kernel_components)
 
-    y = gp.sample()
-    # Remove a linear trend
-    y -= np.polyval(np.polyfit(x - x.mean(), y, 1), x - x.mean())
 
-    return times, y, kernel
+class SolarOscillatorKernel(StellarOscillatorKernel):
+    """
+    Like a ``StellarOscillatorKernel``, but limited to only
+    the default gadfly SOHO VIRGO/PMO6 kernel hyperparameters.
+    """
+
+    def __init__(self):
+        super().__init__(
+            Hyperparameters.from_soho_virgo()
+        )

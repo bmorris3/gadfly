@@ -4,22 +4,23 @@ import astropy.units as u
 __all__ = ['power_spectrum']
 
 
+@u.quantity_input(d=u.s)
 def power_spectrum(flux, d=60 * u.s):
     """
     Compute the power spectrum of ``fluxes`` in units of [ppm^2 / microHz].
 
     Parameters
     ----------
-    fluxes : ~numpy.ndarray
+    flux : ~numpy.ndarray or ~astropy.units.Quantity
         Fluxes with zero mean.
     d : ~astropy.units.Quantity
         Time between samples.
 
     Returns
     -------
-    freq : numpy.ndarray
+    freq : ~astropy.units.Quantity
         Frequencies in microHz
-    power : numpy.ndarray
+    power : ~astropy.units.Quantity
         Power at each frequency in units of [ppm^2 / microHz]
     """
     if hasattr(flux, 'unit'):

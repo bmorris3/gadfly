@@ -1,27 +1,26 @@
-from astropy.constants import L_sun, M_sun, R_sun
+import pytest
 import numpy as np
+
 import astropy.units as u
+from astropy.utils.exceptions import AstropyUserWarning
 
-from ..core import generate_solar_fluxes, generate_stellar_fluxes
+from ..core import Hyperparameters
+from ..scale import (
+    fwhm, _solar_mass, _solar_temperature, _solar_radius, _solar_luminosity
+)
 
 
-def test_sun():
-
-    x_sun, y_sun, kernel_sun = generate_solar_fluxes(
-        duration=10*u.min, cadence=60*u.s
+def test_scaling_relations():
+    # initialize a "star" with exactly solar parameters:
+    params = Hyperparameters.for_star(
+        _solar_mass, _solar_temperature, _solar_radius, _solar_luminosity
     )
 
-    f = np.logspace(np.log10(1e-2 * 1e-6), np.log10(1e4 * 1e-6), 100000)
+    # now compute scale factors and ensure they're all unity
+    should_be_ones = np.array(list(params.scale_factors.values()))
+    np.testing.assert_allclose(np.ones_like(should_be_ones), should_be_ones)
 
-    M = 1*M_sun
-    L = 1*L_sun
-    T_eff = 5777 * u.K
-    R = 1*R_sun
-    x_sun, y_sun, kernel_sun2 = generate_stellar_fluxes(
-        10*u.min, M, T_eff, R, L, cadence=60*u.s
-    )
 
-    np.testing.assert_allclose(
-        kernel_sun.get_psd(2*np.pi*f),
-        kernel_sun2.get_psd(2*np.pi*f)
-    )
+def test_process_inputs():
+    with pytest.warns(AstropyUserWarning):
+        fwhm(3500*u.K)
