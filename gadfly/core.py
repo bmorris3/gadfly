@@ -55,8 +55,8 @@ class Hyperparameters(list):
 
         Parameters
         ----------
-        path : str or `None
-            Path to the solar hyperparameter JSON file. If `None`, loads
+        path : str or None
+            Path to the solar hyperparameter JSON file. If None, loads
             the default gadfly solar hyperparameter list.
         """
         if path is None:
