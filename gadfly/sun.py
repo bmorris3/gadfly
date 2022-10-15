@@ -19,4 +19,4 @@ def broomhall_p_mode_freqs(path=None):
     if path is None:
         path = default_p_mode_path
 
-    return QTable.read(path)['nu']
+    return QTable.read(path, format='ascii.ecsv')['nu']
