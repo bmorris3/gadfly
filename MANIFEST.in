@@ -5,6 +5,7 @@ include LICENSE.rst
 include pyproject.toml
 
 recursive-include gadfly *.pyx *.c *.pxd
+recursive-include gadfly *.ecsv *.json
 recursive-include docs *
 recursive-include licenses *
 recursive-include cextern *
