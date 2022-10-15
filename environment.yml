@@ -1,9 +1,10 @@
 name: gadfly
 channels:
-  - conda-forge
+  - astropy
 dependencies:
   - astropy
   - pip:
     - pytest-astropy
     - celerite2
     - matplotlib
+    - PyYAML
