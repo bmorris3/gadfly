@@ -9,7 +9,7 @@ from astropy.utils.exceptions import AstropyUserWarning
 __all__ = [
     'p_mode_amplitudes', 'delta_nu', 'nu_max',
     'tau_eff', 'fwhm', 'tau_gran',
-    'granulation_amplitude'
+    'granulation_amplitude', 'c_K'
 ]
 
 # Solar parameters
@@ -40,9 +40,10 @@ _huber_t = 1.89
 def c_K(temperature):
     """
     Bolometric correction factor as a function of
-    effective temperature, given in the abstract of
-    Ballot et al. (2011) [1]_, and Eqn 8 of Huber et al.
-    (2011) [2]_.
+    effective temperature.
+
+    Given in the abstract of Ballot et al. (2011) [1]_,
+    and Eqn 8 of Huber et al. (2011) [2]_.
 
     Parameters
     ----------
@@ -53,7 +54,6 @@ def c_K(temperature):
     ----------
     .. [1] `Ballot et al. (2011)
        <https://ui.adsabs.harvard.edu/abs/2011A%26A...531A.124B/abstract>`_
-
     .. [2] `Huber et al. (2011)
        <https://ui.adsabs.harvard.edu/abs/2011ApJ...743..143H/abstract>`_
     """
@@ -74,6 +74,8 @@ def _p_mode_amplitudes(mass, temperature, luminosity):
 @u.quantity_input(mass=u.g, temperature=u.K, luminosity=u.L_sun)
 def p_mode_amplitudes(mass, temperature, luminosity):
     """
+    p-mode oscillation power amplitudes.
+
     Huber et al. (2011), Eqn 9 [1]_.
 
     Parameters
@@ -99,7 +101,9 @@ def p_mode_amplitudes(mass, temperature, luminosity):
 @u.quantity_input(mass=u.g, radius=u.m)
 def delta_nu(mass, radius):
     """
-    Large frequency separation scaling. Huber et al. (2012) Eqn 3 [1]_.
+    Large frequency separation scaling.
+
+    Huber et al. (2012) Eqn 3 [1]_.
 
     Parameters
     ----------
@@ -122,7 +126,9 @@ def delta_nu(mass, radius):
 @u.quantity_input(mass=u.g, temperature=u.K, radius=u.m)
 def nu_max(mass, temperature, radius):
     """
-    Frequency of maximum power. Huber et al. (2012) Eqn 4 [1]_.
+    Frequency of maximum power.
+
+    Huber et al. (2012) Eqn 4 [1]_.
 
     Parameters
     ----------
@@ -148,7 +154,9 @@ def nu_max(mass, temperature, radius):
 @u.quantity_input(nu=u.Hz)
 def tau_eff(nu_max):
     """
-    Characteristic granulation timescale as in Kallinger et al. (2014) [1]_,
+    Characteristic granulation timescale.
+
+    Relation from  Kallinger et al. (2014) [1]_,
     described in the last sentence in the paragraph below Eqn 4.
 
     Parameters
@@ -180,10 +188,11 @@ def _fwhm(temperature):
 @u.quantity_input(temperature=u.K)
 def fwhm(temperature, quiet=False):
     """
-    Scale the natural log of the p-mode peaks' FWHM according to
-    the fit in Figure 7 of Corsaro et al. (2015) [1]_.
+    Scale the FWHM of p-mode oscillation peaks in power.
 
-    Actual parameterization from Enrico Corsaro
+    From the fit in Figure 7 of Corsaro et al. (2015) [1]_.
+
+    Actual parameters for the fit from Enrico Corsaro
     (private communication).
 
     Parameters
@@ -219,8 +228,9 @@ def fwhm(temperature, quiet=False):
 @u.quantity_input(nu_max=u.uHz)
 def tau_gran(nu_max):
     """
-    Granulation timescale from Kjeldsen & Bedding (2011)
-    Eqn 10 [1]_.
+    Granulation timescale scaling.
+
+    Kjeldsen & Bedding (2011) Eqn 10 [1]_.
 
     Parameters
     ----------
@@ -238,8 +248,9 @@ def tau_gran(nu_max):
 @u.quantity_input(radius=u.m)
 def n(mass, radius, temperature, luminosity):
     """
-    Number of granules on the stellar surface
-    from Kjeldsen & Bedding (2011) Eqn 13 [1]_.
+    Number of granules on the stellar surface.
+
+    From Kjeldsen & Bedding (2011) Eqn 13 [1]_.
 
     References
     ----------
@@ -252,8 +263,9 @@ def n(mass, radius, temperature, luminosity):
 @u.quantity_input(mass=u.g, temperature=u.K, luminosity=u.L_sun)
 def H_P(mass, temperature, luminosity):
     """
-    Pressure scale height in Kjeldsen & Bedding (2011)
-    Eqn 8 [1]_.
+    Pressure scale height of stellar photosphere.
+
+    Kjeldsen & Bedding (2011) Eqn 8 [1]_.
 
     Parameters
     ----------
@@ -285,8 +297,9 @@ def _granulation_power_factor(nu, nu_max, mass, radius, temperature, luminosity)
                   temperature=u.K, luminosity=u.L_sun)
 def granulation_amplitude(nu, nu_max, mass, radius, temperature, luminosity):
     """
-    Granulation amplitude scaling as in Kjeldsen & Bedding (2011)
-    Eqn 21 [1]_.
+    Granulation amplitude scaling.
+
+    Kjeldsen & Bedding (2011) Eqn 21 [1]_.
 
     Parameters
     ----------

@@ -6,13 +6,13 @@ stars with granulation and p-mode oscillations.
 
 .. warning:: A major API overhaul is underway. Prepare for big changes!
 
-.. automodapi:: gadfly
-
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
    gadfly/index.rst
+   gadfly/reference.rst
+
 
 Indices and tables
 ==================
