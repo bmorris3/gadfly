@@ -6,6 +6,12 @@ import astropy.units as u
 from astropy.utils.exceptions import AstropyUserWarning
 
 
+__all__ = [
+    'p_mode_amplitudes', 'delta_nu', 'nu_max',
+    'tau_eff', 'fwhm', 'tau_gran',
+    'granulation_amplitude'
+]
+
 # Solar parameters
 _solar_temperature = 5777 * u.K
 _solar_mass = 1 * u.M_sun
@@ -45,8 +51,11 @@ def c_K(temperature):
 
     References
     ----------
-    .. [1] https://ui.adsabs.harvard.edu/abs/2011A%26A...531A.124B/abstract
-    .. [2] https://ui.adsabs.harvard.edu/abs/2011ApJ...743..143H/abstract
+    .. [1] `Ballot et al. (2011)
+       <https://ui.adsabs.harvard.edu/abs/2011A%26A...531A.124B/abstract>`_
+
+    .. [2] `Huber et al. (2011)
+       <https://ui.adsabs.harvard.edu/abs/2011ApJ...743..143H/abstract>`_
     """
     return float(
         (temperature / (5934 * u.K)) ** 0.8
@@ -78,7 +87,8 @@ def p_mode_amplitudes(mass, temperature, luminosity):
 
     References
     ----------
-    .. [1] https://ui.adsabs.harvard.edu/abs/2011ApJ...743..143H/abstract
+    .. [1] `Huber et al. (2011)
+       <https://ui.adsabs.harvard.edu/abs/2011ApJ...743..143H/abstract>`_
     """
     return float(
         _p_mode_amplitudes(mass, temperature, luminosity) /
@@ -100,7 +110,8 @@ def delta_nu(mass, radius):
 
     References
     ----------
-    .. [1] https://ui.adsabs.harvard.edu/abs/2012ApJ...760...32H/abstract
+    .. [1] `Huber et al. (2012)
+       <https://ui.adsabs.harvard.edu/abs/2012ApJ...760...32H/abstract>`_
     """
     return float(
         (mass / _solar_mass) ** 0.5 *
@@ -124,7 +135,8 @@ def nu_max(mass, temperature, radius):
 
     References
     ----------
-    .. [1] https://ui.adsabs.harvard.edu/abs/2012ApJ...760...32H/abstract
+    .. [1] `Huber et al. (2012)
+       <https://ui.adsabs.harvard.edu/abs/2012ApJ...760...32H/abstract>`_
     """
     return float(
         (mass / _solar_mass) *
@@ -146,7 +158,8 @@ def tau_eff(nu_max):
 
     References
     ----------
-    .. [1] https://ui.adsabs.harvard.edu/abs/2014A%26A...570A..41K/abstract
+    .. [1] `Kallinger et al. (2014)
+       <https://ui.adsabs.harvard.edu/abs/2014A%26A...570A..41K/abstract>`_
     """
     return float(
         (nu_max / _solar_nu_max) ** -0.89
@@ -183,7 +196,8 @@ def fwhm(temperature, quiet=False):
 
     References
     ----------
-    .. [1] https://ui.adsabs.harvard.edu/abs/2015A%26A...579A..83C/abstract
+    .. [1] `Corsaro et al. (2015)
+       <https://ui.adsabs.harvard.edu/abs/2015A%26A...579A..83C/abstract>`_
     """
     if not quiet and temperature < 4900 * u.K:
         message = (
@@ -213,7 +227,10 @@ def tau_gran(nu_max):
     nu_max : ~astropy.units.Quantity
         Peak p-mode frequency
 
-    .. [1] https://ui.adsabs.harvard.edu/abs/2011A%26A...529L...8K/abstract
+    References
+    ----------
+    .. [1] `Kjeldsen & Bedding (2011)
+       <https://ui.adsabs.harvard.edu/abs/2011A%26A...529L...8K/abstract>`_
     """
     return _solar_nu_max / nu_max
 
@@ -224,7 +241,10 @@ def n(mass, radius, temperature, luminosity):
     Number of granules on the stellar surface
     from Kjeldsen & Bedding (2011) Eqn 13 [1]_.
 
-    .. [1] https://ui.adsabs.harvard.edu/abs/2011A%26A...529L...8K/abstract
+    References
+    ----------
+    .. [1] `Kjeldsen & Bedding (2011)
+       <https://ui.adsabs.harvard.edu/abs/2011A%26A...529L...8K/abstract>`_
     """
     return (radius / H_P(mass, temperature, luminosity)) ** 2
 
@@ -242,7 +262,8 @@ def H_P(mass, temperature, luminosity):
 
     References
     ----------
-    .. [1] https://ui.adsabs.harvard.edu/abs/2011A%26A...529L...8K/abstract
+    .. [1] `Kjeldsen & Bedding (2011)
+       <https://ui.adsabs.harvard.edu/abs/2011A%26A...529L...8K/abstract>`_
     """
     stellar_H_factor = luminosity / (mass * temperature ** 3)
     solar_H_factor = _solar_luminosity / (_solar_mass * _solar_temperature ** 3)
@@ -274,7 +295,8 @@ def granulation_amplitude(nu, nu_max, mass, radius, temperature, luminosity):
 
     References
     ----------
-    .. [1] https://ui.adsabs.harvard.edu/abs/2011A%26A...529L...8K/abstract
+    .. [1] `Kjeldsen & Bedding (2011)
+       <https://ui.adsabs.harvard.edu/abs/2011A%26A...529L...8K/abstract>`_
     """
     return float(
         _granulation_power_factor(nu, nu_max, mass, radius, temperature, luminosity) /

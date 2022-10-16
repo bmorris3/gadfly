@@ -8,7 +8,11 @@ stars with granulation and p-mode oscillations.
 
 .. automodapi:: gadfly
 
-.. automodapi:: gadfly.scale
+.. toctree::
+   :maxdepth: 2
+   :caption: Contents:
+
+   gadfly/index.rst
 
 Indices and tables
 ==================

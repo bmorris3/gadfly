@@ -3,4 +3,3 @@
 from .version import __version__  # noqa
 from .core import *  # noqa
 from .psd import *  # noqa
-from .interp import *  # noqa
