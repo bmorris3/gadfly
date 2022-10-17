@@ -1,13 +1,37 @@
 import numpy as np
 import astropy.units as u
 
+
 doc = "A unit representing parts-per-million"  # ...is useful here
 ppm = u.def_unit(
     'ppm', (100 * u.percent) / 1e6, doc=doc
 )
 u.add_enabled_units(ppm)
 
-__all__ = ['power_spectrum']
+__all__ = ['PowerSpectrum', 'power_spectrum', 'ppm', 'plot_power_spectrum']
+
+
+class PowerSpectrum:
+    @u.quantity_input(frequency=u.uHz, power=ppm**2/u.uHz)
+    def __init__(self, frequency, power, error=None):
+        self.frequency = frequency
+        self.power = power
+        self.error = error
+
+    def bin(self, bins=None, **kwargs):
+        """
+        Bin the power spectrum, return a new PowerSpectrum.
+
+        Parameters
+        ----------
+        bins : int or ~numpy.ndarray
+            Number of bins or an array of bin edges.
+        """
+        return bin_power_spectrum(self.frequency, self.power, bins, **kwargs)
+
+    @classmethod
+    def from_light_curve(cls, flux, d):
+        return power_spectrum(flux, d)
 
 
 @u.quantity_input(quantity=1/u.uHz)
@@ -16,14 +40,14 @@ def to_psd_units(quantity):
 
 
 @u.quantity_input(d=u.s)
-def power_spectrum(flux, d=60 * u.s):
+def power_spectrum(flux, d=60 * u.s, include_zero_freq=False):
     """
     Compute the power spectrum of ``fluxes`` in units of [ppm^2 / microHz].
 
     Parameters
     ----------
     flux : ~numpy.ndarray or ~astropy.units.Quantity
-        Fluxes with zero mean.
+        Fluxes with zero mean, uniformly separated in time.
     d : ~astropy.units.Quantity
         Time between samples.
 
@@ -33,6 +57,8 @@ def power_spectrum(flux, d=60 * u.s):
         Frequencies in microHz
     power : ~astropy.units.Quantity
         Power at each frequency in units of [ppm^2 / microHz]
+    include_zero_freq : bool
+        Include freq=0?
     """
     if hasattr(flux, 'unit'):
         # if flux has units, use them!
@@ -47,7 +73,89 @@ def power_spectrum(flux, d=60 * u.s):
     power = np.real(fft * np.conj(fft)) * d.to(1 / u.uHz) / len(flux_unscaled)
     freq = np.fft.rfftfreq(len(flux_unscaled), d.to(1 / u.uHz))
 
-    return freq.to(u.uHz), power.to(flux_unit ** 2 / u.uHz)
+    if not include_zero_freq:
+        freq = freq[1:]
+        power = power[1:]
+
+    return PowerSpectrum(freq.to(u.uHz), power.to(flux_unit ** 2 / u.uHz))
+
+
+def plot_power_spectrum(
+        p_mode_inset=True, kernel=None, n_samples=1000,
+        figsize=(10, 5), scaling_low_freq='loglog',
+        scaling_p_mode='semilogy', inset_xlim=[1800, 4500],
+        inset_ylim=[0.03, 1.3], title='Power spectrum',
+        observed_power_spectrum=None,
+        kernel_kwargs=dict(),
+        obs_kwargs=dict(color='silver', marker='o', lw=0),
+):
+    """
+    Plot a power spectrum.
+
+    Parameters
+    ----------
+    p_mode_inset : bool
+    kernel : None or subclass of `~celerite2.terms.Term`
+    n_samples : int
+    figsize : list of floats
+    scaling_low_freq : str
+    scaling_p_mode : str
+    inset_xlim : list of floats
+    inset_ylim : list of floats
+    title : str
+    observed_power_spectrum : ~gadfly.psd.PowerSpectrum
+    kernel_kwargs : dict
+    obs_kwargs : dict
+
+    Returns
+    -------
+    fig, ax
+    """
+    if observed_power_spectrum is None and kernel is None:
+        raise ValueError("Requires an observed power spectrum, a kernel, or both.")
+
+    import matplotlib.pyplot as plt
+    frequencies_all = np.logspace(-1, 3.5, n_samples // 2) * u.uHz
+    frequencies_p_mode = np.linspace(2000, 4500, n_samples // 2) * u.uHz
+
+    freq = np.sort(
+        np.concatenate([frequencies_all, frequencies_p_mode])
+    )
+
+    fig, ax = plt.subplots(figsize=figsize)
+
+    if p_mode_inset:
+        ax_inset = ax.inset_axes([0.5, 0.5, 0.47, 0.47])
+
+    for i, (axis, plot_method) in enumerate(zip(
+        [ax, ax_inset],
+        [scaling_low_freq, scaling_p_mode],
+    )):
+        if kernel is not None:
+            getattr(axis, plot_method)(
+                freq, kernel.get_psd(2 * np.pi * freq.to(u.uHz).value), **kernel_kwargs
+            )
+        if observed_power_spectrum is not None:
+            getattr(axis, plot_method)(
+                observed_power_spectrum.frequency,
+                to_psd_units(observed_power_spectrum.power),
+                **obs_kwargs
+            )
+        axis.set(
+            xlabel='Frequency [$\\mu$Hz]',
+            ylabel='Power [ppm$^2$ / $\\mu$Hz]',
+        )
+    if p_mode_inset:
+        ax_inset.set_xlim(inset_xlim)
+        ax_inset.set_ylim(inset_ylim)
+        ax_inset.annotate(
+            "p-modes", (0.97 * inset_xlim[1], 0.7 * inset_ylim[1]),
+            ha='right'
+        )
+        ax.indicate_inset_zoom(ax_inset, edgecolor="silver")
+    ax.set_title(title)
+    fig.tight_layout()
+    return fig, ax
 
 
 def spectral_binning(y, all_x, all_y):
@@ -66,7 +174,7 @@ def spectral_binning_err(y, all_x, all_y, constant=5):
     """
     min_ind = np.argwhere(all_y == y[0])[0, 0]
     max_ind = np.argwhere(all_y == y[-1])[0, 0]
-    mean_x = all_x[min_ind:max_ind + 1].mean()
+    mean_x = np.nanmean(all_x[min_ind:max_ind + 1])
 
     # This term scales down the stddev (uncertainty) by the root of the
     # number of points in the bin == Gaussian uncertainty
@@ -78,7 +186,7 @@ def spectral_binning_err(y, all_x, all_y, constant=5):
     return gaussian_term * non_gaussian_term
 
 
-def bin_power_spectrum(freq, power, log_freq_bins=True, **kwargs):
+def bin_power_spectrum(freq, power, bins=None, **kwargs):
     """
     Bin a power spectrum, with log-spaced frequency bins.
 
@@ -88,8 +196,8 @@ def bin_power_spectrum(freq, power, log_freq_bins=True, **kwargs):
         Frequency
     power : ~astropy.units.Quantity
         Power spectrum
-    log_freq_bins : True
-        Other options not implemented.
+    bins : int or ~numpy.ndarray
+        Number of bins, or the bin edges
 
     Returns
     -------
@@ -99,14 +207,11 @@ def bin_power_spectrum(freq, power, log_freq_bins=True, **kwargs):
     """
     from scipy.stats import binned_statistic
 
-    if not log_freq_bins:
-        raise NotImplementedError("`bin_power_spectrum` has only been "
-                                  "vetted with `log_freq_bins=True`.")
-
     log_freq = np.log10(freq[1:].value)
 
     # Set the number of log-spaced frequency bins
-    n_bins = len(log_freq) // 10000
+    if bins is None:
+        bins = len(log_freq) // 10000
 
     # Bin the power spectrum:
     bs = binned_statistic(
@@ -114,7 +219,7 @@ def bin_power_spectrum(freq, power, log_freq_bins=True, **kwargs):
         statistic=lambda y: spectral_binning(
             y, all_x=freq.value[1:], all_y=power[1:].value
         ),
-        bins=n_bins
+        bins=bins
     )
 
     # Compute the error in the power spectrum bins
@@ -123,14 +228,14 @@ def bin_power_spectrum(freq, power, log_freq_bins=True, **kwargs):
         statistic=lambda y: spectral_binning_err(
             y, all_x=freq.value[1:], all_y=power[1:].value, **kwargs
         ),
-        bins=n_bins
+        bins=bins
     )
 
     freq_bins = 10 ** (0.5 * (bs.bin_edges[1:] + bs.bin_edges[:-1])) * freq.unit
     power_bins = to_psd_units(bs.statistic * power.unit)
     power_bins_err = to_psd_units(bs_err.statistic * power.unit)
 
-    return freq_bins, power_bins, power_bins_err
+    return PowerSpectrum(freq_bins, power_bins, power_bins_err)
 
 
 def linear_space_to_jax_parameterization(all_S0s, all_omegas):

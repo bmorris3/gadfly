@@ -8,3 +8,4 @@ dependencies:
     - celerite2
     - matplotlib
     - PyYAML
+    - scipy
