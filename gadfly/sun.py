@@ -2,7 +2,6 @@ import os
 
 import numpy as np
 
-import astropy.units as u
 from astropy.io import fits
 from astropy.table import QTable, Table
 from astropy.time import Time
@@ -10,7 +9,7 @@ from astropy.utils.data import download_file
 
 from gadfly.psd import ppm
 
-__all__ = ['broomhall_p_mode_freqs', 'download_soho_virgo_time_series']
+__all__ = ['download_soho_virgo_time_series']
 
 full_soho_virgo_url = "https://stsci.box.com/shared/static/ejsyj0bse6ciqq0ry2gzjdjgbied7cj1.gz"
 one_year_soho_virgo_url = "https://stsci.box.com/shared/static/lk6aqc1w8gjwt1ff1foad4i9lukuj76u.gz"
@@ -35,10 +34,10 @@ def broomhall_p_mode_freqs(path=None):
     return QTable.read(path, format='ascii.ecsv')['nu']
 
 
-def download_soho_virgo_time_series(full_time_series=False, cache=True):
+def download_soho_virgo_time_series(full_time_series=False, cache=True, name='SOHO VIRGO/PMO6'):
     """
     Download the total solar irradiance time series measurements
-    from the SOHO VIRGO/PMO6 instrument.
+    from the SOHO VIRGO/PMO6 instrument [1]_.
 
     Interpolate over the missing measurements to provide a
     uniform time series.
@@ -50,13 +49,21 @@ def download_soho_virgo_time_series(full_time_series=False, cache=True):
         observations from the year 2001 (6 MB)
     cache : bool
         Cache the downloaded file locally
+    name : str
+        Name of the resulting light curve
 
     Returns
     -------
-    times : ~astropy.time.Time
-    fluxes : ~astropy.units.Quantity
-    error : ~astropy.units.Quantity
+    light_curve : ~lightkurve.lightcurve.LightCurve
+
+    References
+    ----------
+    .. [1] `<VIRGO Data Products Archive
+           https://www.pmodwrc.ch/en/research-development/solar-physics/virgo-data-products-archived_webpage/>`_
     """
+    from lightkurve import LightCurve
+    meta = dict(name=name)
+
     if full_time_series:
         path = download_file(full_soho_virgo_url, cache=cache, pkgname='gadfly')
         hdu = fits.open(path)
@@ -77,7 +84,6 @@ def download_soho_virgo_time_series(full_time_series=False, cache=True):
         interp_fluxes = np.interp(
             times[raw_fluxes == -99], times[raw_fluxes != -99], fluxes[raw_fluxes != -99]
         )
-        d = (times[1] - times[0]) * u.day
 
         fluxes[raw_fluxes == -99] = interp_fluxes
 
@@ -85,11 +91,14 @@ def download_soho_virgo_time_series(full_time_series=False, cache=True):
         fluxes = 1e6 * (fluxes / np.median(fluxes) - 1) * ppm
         # error = mad_std(fluxes)
 
-        return times, fluxes, d
+        return LightCurve(
+            time=Time(times, format='jd'), flux=fluxes, meta=meta
+        )
 
     else:
         tab = Table.read(download_file(one_year_soho_virgo_url, cache=cache, pkgname='gadfly'))
         times = tab['time'].data
-        d = (times[1] - times[0]) * u.d
 
-        return times, tab['flux'] * ppm, d
+        return LightCurve(
+            time=Time(times, format='jd'), flux=tab['flux'] * ppm, meta=meta
+        )

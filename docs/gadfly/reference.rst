@@ -1,8 +1,6 @@
 API Reference
 =============
 
-.. automodapi:: gadfly.core
+.. automodapi:: gadfly
 
 .. automodapi:: gadfly.scale
-
-.. automodapi:: gadfly.psd

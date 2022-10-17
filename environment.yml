@@ -9,3 +9,4 @@ dependencies:
     - matplotlib
     - PyYAML
     - scipy
+    - lightkurve
