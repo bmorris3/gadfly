@@ -11,7 +11,7 @@ Solar power spectrum
 --------------------
 
 Asteroseismic scaling relations are anchored by the total
-solar (TSI) irradiance power spectrum. gadfly's kernels and
+solar irradiance (TSI) power spectrum. gadfly's kernels and
 their hyperparameters are built on a fit to the `SOHO VIRGO/PMO6
 <https://www.pmodwrc.ch/en/research-development/solar-physics/virgo-data-products-archived_webpage/>`_
 TSI observations spanning 1996-2016. They were taken at
