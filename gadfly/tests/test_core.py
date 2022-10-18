@@ -13,7 +13,7 @@ from ..scale import (
 def test_scaling_relations():
     # initialize a "star" with exactly solar parameters:
     params = Hyperparameters.for_star(
-        _solar_mass, _solar_temperature, _solar_radius, _solar_luminosity
+        _solar_mass, _solar_radius, _solar_temperature, _solar_luminosity
     )
 
     # now compute scale factors and ensure they're all unity

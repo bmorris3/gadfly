@@ -1,14 +1,13 @@
 import numpy as np
 import astropy.units as u
 
-
 doc = "A unit representing parts-per-million"  # ...is useful here
 ppm = u.def_unit(
     'ppm', (100 * u.percent) / 1e6, doc=doc
 )
 u.add_enabled_units(ppm)
 
-__all__ = ['PowerSpectrum']
+__all__ = ['PowerSpectrum', 'plot_power_spectrum']
 
 
 @u.quantity_input(quantity=1/u.uHz)
@@ -16,15 +15,15 @@ def to_psd_units(quantity):
     return quantity.to(ppm**2 / u.uHz)
 
 
-def _plot_power_spectrum(
-        p_mode_inset=True, kernel=None, n_samples=1000,
-        figsize=(10, 5), scaling_low_freq='loglog',
-        scaling_p_mode='semilogy', inset_xlim=[1800, 4500],
-        inset_ylim=[0.03, 1.3], title=None,
-        label_kernel=None, label_obs=None, label_inset='p-modes',
-        obs=None,
-        kernel_kwargs=dict(), legend=True,
-        obs_kwargs=dict(color='silver', marker='o', lw=0),
+def plot_power_spectrum(
+    p_mode_inset=True, kernel=None, n_samples=1000,
+    figsize=(8, 4), scaling_low_freq='loglog',
+    scaling_p_mode='semilogy', inset_xlim=[1800, 4500],
+    inset_ylim=[0.03, 1.3], title=None,
+    label_kernel=None, label_obs=None, label_inset='p-modes',
+    obs=None, kernel_kwargs=dict(color='r'), legend=True,
+    obs_kwargs=dict(color='k', marker='o', lw=0),
+    inset_kwargs=dict(color='k', marker='.', lw=0), ax=None
 ):
     """
     Plot a power spectrum.
@@ -47,6 +46,7 @@ def _plot_power_spectrum(
     kernel_kwargs : dict
     legend : bool
     obs_kwargs : dict
+    ax : ~matplotlib.axes.Axis
 
     Returns
     -------
@@ -56,45 +56,52 @@ def _plot_power_spectrum(
         raise ValueError("Requires an observed power spectrum, a kernel, or both.")
 
     import matplotlib.pyplot as plt
-    frequencies_all = np.logspace(-1, 3.5, n_samples // 2) * u.uHz
-    frequencies_p_mode = np.linspace(2000, 4500, n_samples // 2) * u.uHz
+    frequencies_all = np.logspace(-1, 3.5, int(n_samples) // 2) * u.uHz
+    frequencies_p_mode = np.linspace(2000, 4500, int(n_samples) // 2) * u.uHz
 
     freq = np.sort(
         np.concatenate([frequencies_all, frequencies_p_mode])
     )
 
-    fig, ax = plt.subplots(figsize=figsize)
+    if ax is None:
+        fig, ax = plt.subplots(figsize=figsize)
+    else:
+        fig = plt.gcf()
 
     if p_mode_inset:
         ax_inset = ax.inset_axes([0.5, 0.5, 0.47, 0.47])
+    else:
+        ax_inset = None
 
-    for i, (axis, plot_method) in enumerate(zip(
+    for i, (axis, plot_method, obs_plot_kwargs) in enumerate(zip(
         [ax, ax_inset],
         [scaling_low_freq, scaling_p_mode],
+        [obs_kwargs, inset_kwargs]
     )):
-        if kernel is not None:
+        if axis is not None:
+            if kernel is not None:
 
-            if label_kernel is None:
-                label_kernel = 'Model'
+                if label_kernel is None:
+                    label_kernel = 'Model'
 
-            getattr(axis, plot_method)(
-                freq, kernel.get_psd(2 * np.pi * freq.to(u.uHz).value),
-                label=label_kernel, **kernel_kwargs
+                getattr(axis, plot_method)(
+                    freq, kernel.get_psd(2 * np.pi * freq.to(u.uHz).value),
+                    label=label_kernel, **kernel_kwargs
+                )
+            if obs is not None:
+
+                if label_obs is None:
+                    label_obs = 'Observations'
+
+                getattr(axis, plot_method)(
+                    obs.frequency,
+                    to_psd_units(obs.power),
+                    label=label_obs, **obs_plot_kwargs
+                )
+            axis.set(
+                xlabel='Frequency [$\\mu$Hz]',
+                ylabel='Power [ppm$^2$ / $\\mu$Hz]',
             )
-        if obs is not None:
-
-            if label_obs is None:
-                label_obs = 'Observations'
-
-            getattr(axis, plot_method)(
-                obs.frequency,
-                to_psd_units(obs.power),
-                label=label_obs, **obs_kwargs
-            )
-        axis.set(
-            xlabel='Frequency [$\\mu$Hz]',
-            ylabel='Power [ppm$^2$ / $\\mu$Hz]',
-        )
     if p_mode_inset:
         ax_inset.set_xlim(inset_xlim)
         ax_inset.set_ylim(inset_ylim)
@@ -280,8 +287,6 @@ class PowerSpectrum:
     An observed power spectrum.
     """
 
-    from gadfly.core import _append_docstring
-
     @u.quantity_input(frequency=u.uHz, power=ppm**2/u.uHz)
     def __init__(self, frequency, power, error=None, name=None):
         self.frequency = frequency
@@ -338,9 +343,10 @@ class PowerSpectrum:
 
         return cls(freq.to(u.uHz), power.to(flux_unit ** 2 / u.uHz), name=name)
 
-    @_append_docstring(_plot_power_spectrum)
     def plot(self, **kwargs):
-        """"""
-        return _plot_power_spectrum(
+        """
+        See docstring for :py:func:`~gadfly.plot_power_spectrum` for arguments
+        """
+        return plot_power_spectrum(
             obs=self, **kwargs
         )

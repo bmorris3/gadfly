@@ -3,7 +3,7 @@
     :width: 200
     :align: center
 
-This is the documentation for ``gadfly``, a package for generating photometry of
+This is the documentation for ``gadfly``, a Python package for generating photometry of
 stars with granulation and p-mode oscillations. The source code is available
 `on GitHub <https://github.com/bmorris3/gadfly>`_.
 
@@ -13,7 +13,8 @@ stars with granulation and p-mode oscillations. The source code is available
    :maxdepth: 2
    :caption: Contents:
 
-   gadfly/index.rst
+   gadfly/install.rst
+   gadfly/start.rst
    gadfly/reference.rst
 
 

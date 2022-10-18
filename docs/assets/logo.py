@@ -5,6 +5,8 @@ Generate the gadfly logo!
 import os
 import numpy as np
 import matplotlib.pyplot as plt
+from PIL import Image
+
 np.random.seed(42)
 
 # Set the maximum number of random attempts to draw non-overlapping
@@ -52,7 +54,7 @@ while len(centers) < n_circles and draw_attempts < max_draw_attempts:
     if no_overlaps(proposed_center, centers):
         centers.append(proposed_center)
 
-        ax.patches.append(
+        ax.add_patch(
             plt.Circle(proposed_center, radius, color='k')
         )
     draw_attempts += 1
@@ -101,7 +103,6 @@ with open(cropped_svg_path, 'w') as cropped_svg:
 # Delete the uncropped SVG:
 os.remove(uncropped_svg_path)
 
-from PIL import Image
+# Convert the PNG into an ICO file:
 img = Image.open(png_path)
 img.save(ico_path)
-

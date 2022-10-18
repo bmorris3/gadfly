@@ -5,7 +5,8 @@ import numpy as np
 from celerite2 import terms
 import astropy.units as u
 
-from gadfly import scale
+from . import scale
+from .psd import plot_power_spectrum
 
 __all__ = [
     'Hyperparameters', 'StellarOscillatorKernel', 'SolarOscillatorKernel'
@@ -15,13 +16,6 @@ dirname = os.path.dirname(os.path.abspath(__file__))
 default_hyperparameter_path = os.path.join(
     dirname, 'data', 'hyperparameters.json'
 )
-
-
-def _append_docstring(original):
-    def wrapper(target):
-        target.__doc__ += original.__doc__
-        return target
-    return wrapper
 
 
 class Hyperparameters(list):
@@ -89,7 +83,7 @@ class Hyperparameters(list):
 
     @staticmethod
     @u.quantity_input(mass=u.g, temperature=u.K, radius=u.m, luminosity=u.L_sun)
-    def _get_scale_factors(mass, temperature, radius, luminosity, quiet=False):
+    def _get_scale_factors(mass, radius, temperature, luminosity, quiet=False):
         return dict(
             p_mode_amps=scale.p_mode_amplitudes(mass, temperature, luminosity),
             nu_max=scale.nu_max(mass, temperature, radius),
@@ -99,7 +93,7 @@ class Hyperparameters(list):
 
     @classmethod
     @u.quantity_input(mass=u.g, temperature=u.K, radius=u.m, luminosity=u.L_sun)
-    def for_star(cls, mass, temperature, radius, luminosity, name=None, quiet=False):
+    def for_star(cls, mass, radius, temperature, luminosity, name=None, quiet=False):
         """
         Applying scaling relations to the SOHO VIRGO/PMO6 total solar
         irradiance hyperparameters for given stellar properties.
@@ -108,10 +102,10 @@ class Hyperparameters(list):
         ----------
         mass : ~astropy.units.Quantity
             Stellar mass
-        temperature : ~astropy.units.Quantity
-            Effective temperature
         radius : ~astropy.units.Quantity
             Stellar radius
+        temperature : ~astropy.units.Quantity
+            Effective temperature
         luminosity : ~astropy.units.Quantity
             Stellar luminosity
         name : str
@@ -122,7 +116,7 @@ class Hyperparameters(list):
         """
         hyperparameters = cls._load_from_json(default_hyperparameter_path)
         scale_factors = cls._get_scale_factors(
-            mass, temperature, radius, luminosity, quiet=quiet
+            mass, radius, temperature, luminosity, quiet=quiet
         )
         scaled_nu_max = scale._solar_nu_max * scale_factors['nu_max']
 
@@ -192,7 +186,6 @@ class StellarOscillatorKernel(terms.TermSum):
 
     ``StellarOscillatorKernel`` inherits from :py:class:`~celerite2.terms.TermSum`.
     """
-    from gadfly.psd import _plot_power_spectrum
 
     def __init__(self, hyperparameters, name=None):
         self.hyperparameters = hyperparameters
@@ -204,10 +197,11 @@ class StellarOscillatorKernel(terms.TermSum):
 
         super().__init__(*kernel_components)
 
-    @_append_docstring(_plot_power_spectrum)
     def plot(self, **kwargs):
-        """"""
-        return self._plot_power_spectrum(kernel=self, **kwargs)
+        """
+        See docstring for :py:func:`~gadfly.plot_power_spectrum` for arguments
+        """
+        return plot_power_spectrum(kernel=self, **kwargs)
 
 
 class SolarOscillatorKernel(StellarOscillatorKernel):
