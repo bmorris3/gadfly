@@ -14,6 +14,6 @@ gadfly
 .. image:: https://github.com/bmorris3/gadfly/blob/master/docs/assets/logo.svg
    :alt: gadfly logo
    :width: 200
-   :align: left
+   :align: right
 
 Photometric simulations of stellar oscillations and granulation. For details, `read the docs <https://gadfly-astro.readthedocs.io/en/latest/?badge=latest>`_.
