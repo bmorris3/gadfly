@@ -21,6 +21,8 @@ radius = 0.05
 logo_dir = os.path.dirname(__file__)
 uncropped_svg_path = os.path.join(logo_dir, 'logo_uncropped.svg')
 cropped_svg_path = os.path.join(logo_dir, 'logo.svg')
+png_path = os.path.join(logo_dir, 'logo.png')
+ico_path = os.path.join(logo_dir, 'logo.ico')
 
 def no_overlaps(proposed_center, centers, exclusion_radius=2.2 * radius):
     """
@@ -78,7 +80,7 @@ savefig_kwargs = dict(
 fig.savefig(uncropped_svg_path, **savefig_kwargs)
 
 # PNG will be at *high* resolution:
-fig.savefig(os.path.join(logo_dir, 'logo.png'), dpi=800, **savefig_kwargs)
+fig.savefig(png_path, dpi=800, **savefig_kwargs)
 
 # This is the default matplotlib SVG configuration which can't be easily tweaked:
 default_svg_dims = 'width="144pt" height="144pt" viewBox="0 0 144 144"'
@@ -98,3 +100,8 @@ with open(cropped_svg_path, 'w') as cropped_svg:
 
 # Delete the uncropped SVG:
 os.remove(uncropped_svg_path)
+
+from PIL import Image
+img = Image.open(png_path)
+img.save(ico_path)
+

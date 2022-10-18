@@ -10,7 +10,7 @@
 # -- Project information -----------------------------------------------------
 
 project = 'gadfly'
-copyright = '2021, Brett M. Morris'
+copyright = '2022, Brett M. Morris'
 author = 'Brett M. Morris'
 
 # The full version, including alpha/beta/rc tags
@@ -72,4 +72,6 @@ html_theme = 'sphinx_book_theme'
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-# html_static_path = ['_static']
+html_logo = "assets/logo.png"
+html_favicon = "assets/logo.ico"
+
