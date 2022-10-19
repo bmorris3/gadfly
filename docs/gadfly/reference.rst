@@ -2,6 +2,6 @@ API Reference
 =============
 
 .. automodapi:: gadfly
-   :skip: plot_power_spectrum
+   :inherited-members:
 
 .. automodapi:: gadfly.scale

@@ -34,7 +34,8 @@ extensions = [
     'sphinx.ext.mathjax',
     'sphinx_automodapi.automodapi',
     'sphinx_automodapi.smart_resolver',
-    "matplotlib.sphinxext.plot_directive"
+    "matplotlib.sphinxext.plot_directive",
+    "numpydoc",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -74,4 +75,15 @@ html_theme = 'sphinx_book_theme'
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_logo = "assets/logo.png"
 html_favicon = "assets/logo.ico"
+
+numpydoc_show_class_members = False
+autodoc_inherit_docstrings = True
+
+html_context = {
+    "display_github": True,
+    "github_user": "bmorris3",
+    "github_repo": "gadfly",
+    "github_version": "master",
+    "conf_py_path": "docs/",
+}
 
