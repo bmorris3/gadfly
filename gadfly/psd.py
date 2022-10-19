@@ -16,24 +16,41 @@ def to_psd_units(quantity):
 
 
 def plot_power_spectrum(
-    p_mode_inset=True, kernel=None, n_samples=1000,
-    figsize=(8, 4), scaling_low_freq='loglog',
-    scaling_p_mode='semilogy', inset_xlim=[1800, 4500],
-    inset_ylim=[0.03, 1.3], title=None,
-    label_kernel=None, label_obs=None, label_inset='p-modes',
-    obs=None, kernel_kwargs=dict(color='r'), legend=True,
+    ax=None,
+    kernel=None,
+    obs=None,
+    freq=None,
+    figsize=(8, 4),
+    n_samples=1000,
+    p_mode_inset=True,
+    legend=True,
+    scaling_low_freq='loglog',
+    scaling_p_mode='semilogy',
+    inset_xlim=[1800, 4500],
+    inset_ylim=[0.03, 1.3],
+    title=None,
+    label_kernel=None,
+    label_obs=None,
+    label_inset='p-modes',
+    kernel_kwargs=dict(color='r'),
     obs_kwargs=dict(color='k', marker='o', lw=0),
-    inset_kwargs=dict(color='k', marker='.', lw=0), ax=None
+    inset_kwargs=dict(color='k', marker='.', lw=0),
 ):
     """
     Plot a power spectrum.
 
+    Requires ``matplotlib``.
+
     Parameters
     ----------
-    p_mode_inset : bool
-    kernel : None or subclass of ~celerite2.terms.Term
-    n_samples : int
+    ax : :py:class:`~matplotlib.axes.Axis`
+    kernel : None or subclass of :py:class:`~celerite2.terms.Term`
+    obs : ~gadfly.psd.PowerSpectrum
+    freq : ~astropy.units.Quantity
     figsize : list of floats
+    n_samples : int
+    p_mode_inset : bool
+    legend : bool
     scaling_low_freq : str
     scaling_p_mode : str
     inset_xlim : list of floats
@@ -42,26 +59,27 @@ def plot_power_spectrum(
     label_inset : str
     label_obs : str
     label_kernel : str
-    obs : ~gadfly.psd.PowerSpectrum
     kernel_kwargs : dict
-    legend : bool
     obs_kwargs : dict
-    ax : ~matplotlib.axes.Axis
+    inset_kwargs : dict
 
     Returns
     -------
-    fig, ax
+    fig : :py:class:`~matplotlib.figure.Figure`
+    ax : :py:class:`~matplotlib.axes.Axes`
     """
     if obs is None and kernel is None:
         raise ValueError("Requires an observed power spectrum, a kernel, or both.")
 
     import matplotlib.pyplot as plt
-    frequencies_all = np.logspace(-1, 3.5, int(n_samples) // 2) * u.uHz
-    frequencies_p_mode = np.linspace(2000, 4500, int(n_samples) // 2) * u.uHz
 
-    freq = np.sort(
-        np.concatenate([frequencies_all, frequencies_p_mode])
-    )
+    if freq is None:
+        frequencies_all = np.logspace(-1, 3.5, int(n_samples) // 2) * u.uHz
+        frequencies_p_mode = np.linspace(2000, 4500, int(n_samples) // 2) * u.uHz
+
+        freq = np.sort(
+            np.concatenate([frequencies_all, frequencies_p_mode])
+        )
 
     if ax is None:
         fig, ax = plt.subplots(figsize=figsize)
@@ -296,7 +314,9 @@ class PowerSpectrum:
 
     def bin(self, bins=None, **kwargs):
         """
-        Bin the power spectrum, return a new PowerSpectrum.
+        Bin the power spectrum, return a new ``PowerSpectrum``.
+
+        Requires scipy.
 
         Parameters
         ----------

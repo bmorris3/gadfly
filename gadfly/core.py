@@ -222,7 +222,7 @@ class SolarOscillatorKernel(StellarOscillatorKernel):
     are initialized with the :py:class:`~gadfly.core.Hyperparameters` class method
     :py:meth:`~gadfly.core.Hyperparameters.from_soho_virgo`.
 
-    ``SolarOscillatorKernel`` inherits from :py:class:`~celerite2.terms.TermSum` and
+    :py:class:`~gadfly.core.SolarOscillatorKernel` inherits from :py:class:`~celerite2.terms.TermSum` and
     :py:class:`~gadfly.core.StellarOscillatorKernel`.
     """
 
