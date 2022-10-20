@@ -7,6 +7,10 @@ gadfly
 .. image:: https://github.com/bmorris3/gadfly/workflows/CI%20Tests/badge.svg
    :target: https://github.com/bmorris3/gadfly/actions
 
+.. image:: http://img.shields.io/badge/powered%20by-celerite2-lightskyblue.svg
+   :target: https://github.com/exoplanet-dev/celerite2
+   :alt: Powered by celerite2 Badge
+
 .. image:: http://img.shields.io/badge/powered%20by-AstroPy-orange.svg?style=flat
    :target: http://www.astropy.org
    :alt: Powered by Astropy Badge
