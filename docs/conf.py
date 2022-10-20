@@ -61,7 +61,8 @@ intersphinx_mapping = {
     'numpy': ('https://numpy.org/doc/stable/', None),
     'celerite2': ('https://celerite2.readthedocs.io/en/latest/', None),
     'astropy': ('https://docs.astropy.org/en/stable/', None),
-    'lightkurve': ('https://docs.lightkurve.org/', None)
+    'lightkurve': ('https://docs.lightkurve.org/', None),
+    'matplotlib': ('http://matplotlib.org/stable', None)
 }
 
 # -- Options for HTML output -------------------------------------------------
