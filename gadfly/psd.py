@@ -36,7 +36,7 @@ def plot_power_spectrum(
     scaling_low_freq='loglog',
     scaling_p_mode='semilogy',
     inset_xlim=[1800, 4500],
-    inset_ylim=[0.03, 1.3],
+    inset_ylim=[0.005, 1.3],
     title=None,
     label_kernel=None,
     label_obs=None,
@@ -134,7 +134,7 @@ def plot_power_spectrum(
         ax_inset.set_xlim(inset_xlim)
         ax_inset.set_ylim(inset_ylim)
         ax_inset.annotate(
-            label_inset, (0.97 * inset_xlim[1], 0.7 * inset_ylim[1]),
+            label_inset, (0.97 * inset_xlim[1], 0.5 * inset_ylim[1]),
             ha='right'
         )
         ax.indicate_inset_zoom(ax_inset, edgecolor="silver")

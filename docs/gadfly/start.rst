@@ -145,7 +145,7 @@ generalization of the :py:class:`~gadfly.SolarOscillatorKernel`.
 
     # Label the legend, set the power range in plot:
     legend = ax.legend(title='Simulated kernels')
-    ax.set_ylim(1e-2, 1e6)
+    ax.set_ylim(5e-3, 1e6)
 
 .. plot::
 
