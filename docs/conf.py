@@ -34,6 +34,7 @@ extensions = [
     'sphinx.ext.mathjax',
     'sphinx_automodapi.automodapi',
     'sphinx_automodapi.smart_resolver',
+    'sphinx.ext.autosectionlabel',
     "matplotlib.sphinxext.plot_directive",
     "numpydoc",
 ]
@@ -88,3 +89,4 @@ html_context = {
     "conf_py_path": "docs/",
 }
 
+autosectionlabel_prefix_document = True

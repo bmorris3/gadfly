@@ -130,12 +130,13 @@ class Hyperparameters(list):
 
                 # scale the granulation amplitudes
                 scale_S0 = params['S0'] * scale.granulation_amplitude(
-                    params['w0'] / (2*np.pi) * u.uHz, scaled_nu_max,
-                    mass, radius, temperature, luminosity
+                    mass, temperature, luminosity
                 )
 
                 # scale the timescales:
-                scaled_w0 = params['w0'] / scale.tau_gran(scaled_nu_max)
+                scaled_w0 = params['w0'] / scale.tau_gran(
+                    mass, temperature, luminosity
+                )
 
                 scaled_hyperparameters.append(
                     dict(
@@ -151,8 +152,12 @@ class Hyperparameters(list):
             else:
                 params = item['hyperparameters']
 
-                # scale the p-mode amplitudes
-                scaled_S0 = params['S0'] * scale_factors['p_mode_amps']
+                # scale the p-mode amplitudes, along with the
+                # granulation scaling:
+                scaled_S0 = (
+                    params['S0'] * scale_factors['p_mode_amps'] *
+                    scale.granulation_amplitude(mass, temperature, luminosity)
+                )
 
                 # scale the p-mode frequencies
                 solar_delta_nu = (

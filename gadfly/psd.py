@@ -12,12 +12,11 @@ u.add_enabled_units(ppm)
 __all__ = ['PowerSpectrum', 'plot_power_spectrum']
 
 
-# @u.quantity_input(assumed_flux_unit=ppm, assumed_freq_unit=u.uHz)
 def to_psd_units(power, assumed_flux_unit=ppm, assumed_freq_unit=u.uHz):
     """
-    Convert ``power`` into units of ppm^2/uHz.
+    Return ``power`` with units of ppm^2/uHz.
     If ``power`` has no units, assume it has units of
-    ``[relative-flux-units / uHz]``.
+    ``[ppm^2 / uHz]``.
     """
     if not hasattr(power, 'unit'):
         power = power * assumed_flux_unit**2 / assumed_freq_unit
@@ -376,7 +375,7 @@ class PowerSpectrum:
             # nth order polynomial to remove systematic trends
             lcs_interped = []
             for lc in light_curve:
-                lc = lc.normalize().remove_nans().remove_outliers()
+                lc = lc.remove_nans().remove_outliers()
 
                 t, f = interpolate_missing_data(lc.time.jd, lc.flux.value)
                 e = np.median(lc.flux_err) * np.ones_like(f)
@@ -389,17 +388,16 @@ class PowerSpectrum:
                 lc_int = LightCurve(
                     time=t,
                     # convert detrended flux to ppm with zero-mean:
-                    flux=1e6 * (normed_flux / np.median(normed_flux) - 1) * ppm,
+                    flux=1e6 * np.array(normed_flux / np.median(normed_flux) - 1),
                     flux_err=e.value
                 )
                 lcs_interped.append(lc_int)
 
             # Stitch together all quarters, interpolate again
             slc = LightCurveCollection(lcs_interped).stitch(lambda x: x)
-            interp_t, interp_f = interpolate_missing_data(slc.time.jd, slc.flux.value)
-            interp_f <<= slc.flux.unit
-            d = (slc.time.jd[1] - slc.time.jd[0]) * u.d
-            flux = interp_f.copy()
+            interp_t, interp_f = interpolate_missing_data(slc.time.jd, slc.flux)
+            d = (interp_t[1] - interp_t[0]) * u.d
+            flux = interp_f.copy() * ppm
             name = light_curve[0].meta.get('name', name)
         else:
             d = (light_curve.time[1] - light_curve.time[0]).to(u.d)

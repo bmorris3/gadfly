@@ -63,11 +63,9 @@ def c_K(temperature):
 
 
 def _p_mode_amplitudes(mass, temperature, luminosity):
-    return float(
-        float(luminosity / u.L_sun) ** _huber_s /
-        (float(mass / u.M_sun) ** _huber_t *
-         temperature.to(u.K).value ** (_huber_r - 1) *
-         c_K(temperature))
+    return (
+        luminosity ** _huber_s /
+        (mass ** _huber_t * temperature ** (_huber_r - 1) * c_K(temperature))
     )
 
 
@@ -225,12 +223,16 @@ def fwhm(temperature, quiet=False):
     )
 
 
+def _tau_gran(mass, temperature, luminosity):
+    return luminosity / (mass * temperature ** 3.5)
+
+
 @u.quantity_input(nu_max=u.uHz)
-def tau_gran(nu_max):
+def tau_gran(mass, temperature, luminosity):
     """
     Granulation timescale scaling.
 
-    Kjeldsen & Bedding (2011) Eqn 10 [1]_.
+    Kjeldsen & Bedding (2011) Eqn 9 [1]_.
 
     Parameters
     ----------
@@ -242,13 +244,16 @@ def tau_gran(nu_max):
     .. [1] `Kjeldsen & Bedding (2011)
        <https://ui.adsabs.harvard.edu/abs/2011A%26A...529L...8K/abstract>`_
     """
-    return _solar_nu_max / nu_max
+    return float(
+        _tau_gran(mass, temperature, luminosity) /
+        _tau_gran(_solar_mass, _solar_temperature, _solar_luminosity)
+    )
 
 
 @u.quantity_input(radius=u.m)
 def n(mass, radius, temperature, luminosity):
     """
-    Number of granules on the stellar surface.
+    Proportion of granules on the stellar surface.
 
     From Kjeldsen & Bedding (2011) Eqn 13 [1]_.
 
@@ -271,6 +276,12 @@ def H_P(mass, temperature, luminosity):
     ----------
     nu_max : ~astropy.units.Quantity
         p-mode maximum frequency
+    mass : ~astropy.units.Quantity
+        Stellar mass
+    temperature : ~astropy.units.Quantity
+        Effective temperature
+    luminosity : ~astropy.units.Quantity
+        Stellar luminosity
 
     References
     ----------
@@ -284,27 +295,25 @@ def H_P(mass, temperature, luminosity):
     )
 
 
-def _granulation_power_factor(nu, nu_max, mass, radius, temperature, luminosity):
-    sigma_int = n(mass, radius, temperature, luminosity) ** -0.5
-    tau_gran_quantity = _solar_granulation_timescale * tau_gran(nu_max)
-    return (
-        sigma_int ** 2 * tau_gran_quantity /
-        (1 + (2 * np.pi * nu * tau_gran_quantity) ** 2)
-    )
+def _granulation_power_factor(mass, temperature, luminosity):
+    return luminosity ** 2 / (mass ** 3 * temperature ** 5.5)
 
 
-@u.quantity_input(nu=u.Hz, nu_max=u.Hz, mass=u.g, radius=u.m,
-                  temperature=u.K, luminosity=u.L_sun)
-def granulation_amplitude(nu, nu_max, mass, radius, temperature, luminosity):
+@u.quantity_input(mass=u.g, temperature=u.K, luminosity=u.L_sun)
+def granulation_amplitude(mass, temperature, luminosity):
     """
     Granulation amplitude scaling.
 
-    Kjeldsen & Bedding (2011) Eqn 21 [1]_.
+    Kjeldsen & Bedding (2011) Eqn 24 [1]_.
 
     Parameters
     ----------
-    nu : ~astropy.units.Quantity
-        Frequency
+    mass : ~astropy.units.Quantity
+        Stellar mass
+    temperature : ~astropy.units.Quantity
+        Effective temperature
+    luminosity : ~astropy.units.Quantity
+        Stellar luminosity
 
     References
     ----------
@@ -312,7 +321,8 @@ def granulation_amplitude(nu, nu_max, mass, radius, temperature, luminosity):
        <https://ui.adsabs.harvard.edu/abs/2011A%26A...529L...8K/abstract>`_
     """
     return float(
-        _granulation_power_factor(nu, nu_max, mass, radius, temperature, luminosity) /
-        _granulation_power_factor(nu, _solar_nu_max, _solar_mass,
-                                  _solar_radius, _solar_temperature, _solar_luminosity)
+        _granulation_power_factor(mass, temperature, luminosity) /
+        _granulation_power_factor(
+            _solar_mass, _solar_temperature, _solar_luminosity
+        )
     )
