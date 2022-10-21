@@ -1,7 +1,10 @@
 .. image:: assets/logo.svg
     :alt: gadfly logo
     :width: 200
-    :align: center
+    :align: right
+
+gadfly
+======
 
 This is the documentation for ``gadfly``, a Python package for generating photometry of
 stars with granulation and p-mode oscillations. The source code is available
