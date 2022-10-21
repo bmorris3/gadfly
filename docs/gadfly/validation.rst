@@ -4,11 +4,12 @@ Validation with Kepler
 Outline
 -------
 
-All of those scaling relations sound great, but do they
-yield kernels that accurately reproduce Kepler time series
-photometric observations of stars? Let's find out!
+All of those scaling relations in :py:mod:`~gadfly.scale`
+sound great, but do they yield kernels that accurately
+reproduce Kepler time series photometric observations of
+stars? Let's find out!
 
-In :ref:`getting_started`, we wrote out the
+In :doc:`start`, we wrote out the
 spectroscopically-derived stellar parameters for a handful of
 stars. In this example, we'll use
 `lightkurve <https://docs.lightkurve.org/>`_ to download the
@@ -22,11 +23,13 @@ Kepler observations for each of the stars. Then we'll use
    relations for a star with known properties like mass, radius,
    temperature, and luminosity, with the
    :py:meth:`~gadfly.Hyperparameters.for_star` method.
-3. Compute a :py:class:`~gadfly.PowerSpectrum` from the light curve
+3. Download the Kepler photometry for each target into a
+   :py:class:`~lightkurve.LightCurve` object, with help from
+   :py:func:`~lightkurve.search_lightcurve`.
+4. Compute a :py:class:`~gadfly.PowerSpectrum` from the
    with the :py:meth:`~gadfly.PowerSpectrum.from_light_curve` method.
-4. Plot the results for each star.
-
-Here we go!
+5. Plot the results for each star with the help of the
+   :py:meth:`~gadfly.PowerSpectrum.plot` method.
 
 Implementation
 --------------
@@ -53,7 +56,7 @@ parameters that we'll need later, and initialize the plot:
     temperatures = [4919, 6259, 4944, 4929, 4986] * u.K
     luminosities = [52.3, 6.9, 41.2, 23.9, 65.4] * u.L_sun
 
-    fig, axes = plt.subplots(len(kics), 1, figsize=(10, 12))
+    fig, axes = plt.subplots(len(kics), 1, figsize=(10, 14))
 
     stellar_props = [kics, masses, radii, temperatures, luminosities, axes]
 
@@ -119,18 +122,18 @@ Now we'll call a big loop to do most of the work:
             legend=True,
             p_mode_inset=False,
             n_samples=5e3,
-            label_kernel='kernel',
+            label_kernel='Pred. kernel',
             label_obs=target_name,
             obs_kwargs=dict(marker='.', markersize=3, color='k', lw=0),
             kernel_kwargs=dict(color=f'C{i}', alpha=0.7),
             title=""
         )
 
-        # Gray out a region at frequencies < 1 / month, which show a
-        # decrease in power caused by the detrending:
-        kepler_quarter_frequency = (1 / (30 * u.day)).to(u.uHz).value
-        axis.axvspan(0, kepler_quarter_frequency, color='silver', alpha=0.1)
-        axis.set_xlim(([1e-1, 1e4]*u.uHz).value)
+        # Gray out a region at frequencies < 1 / month, which will show
+        # a decrease in power caused by the detrending:
+        kepler_cutoff_frequency = (1 / (30 * u.day)).to(u.uHz).value
+        axis.axvspan(0, kepler_cutoff_frequency, color='silver', alpha=0.1)
+        axis.set_xlim(1e-1, 1e4)
         axis.set_ylim(
             np.nanmin(ps.power.value) / 5,
             np.nanmax(ps.power.value) * 5
@@ -158,7 +161,7 @@ Ok, let's see the output:
     temperatures = [4919, 6259, 4944, 4929, 4986] * u.K
     luminosities = [52.3, 6.9, 41.2, 23.9, 65.4] * u.L_sun
 
-    fig, axes = plt.subplots(len(kics), 1, figsize=(10, 12))
+    fig, axes = plt.subplots(len(kics), 1, figsize=(10, 14))
 
     stellar_props = [kics, masses, radii, temperatures, luminosities, axes]
 
@@ -203,18 +206,18 @@ Ok, let's see the output:
             legend=True,
             p_mode_inset=False,
             n_samples=5e3,
-            label_kernel='kernel',
+            label_kernel='Pred. kernel',
             label_obs=target_name,
             obs_kwargs=dict(marker='.', markersize=3, color='k', lw=0),
             kernel_kwargs=dict(color=f'C{i}', alpha=0.7),
             title=""
         )
 
-        # Gray out a region at frequencies < 1 / month, which are
+        # Gray out a region at frequencies > 1 / month, which are
         # attenuated by detrending:
-        kepler_quarter_frequency = (1 / (30 * u.day)).to(u.uHz).value
-        axis.axvspan(0, kepler_quarter_frequency, color='silver', alpha=0.1)
-        axis.set_xlim(([1e-1, 1e4]*u.uHz).value)
+        kepler_cutoff_frequency = (1 / (30 * u.day)).to(u.uHz).value
+        axis.axvspan(0, kepler_cutoff_frequency, color='silver', alpha=0.1)
+        axis.set_xlim(1e-1, 1e4)
         axis.set_ylim(
             np.nanmin(ps.power.value) / 5,
             np.nanmax(ps.power.value) * 5
@@ -225,5 +228,5 @@ The p-modes are shifting in frequency and amplitude, and the separation between
 peaks in the p-modes is scaling with stellar parameters, too. The granulation features
 also shift in frequency and amplitude. The kernel PSD (in color) and observations (in black)
 begin to diverge at low frequencies because detrending applied to the Kepler time
-series tends to remove power at lower frequencies than ~0.4:math:`\mu`Hz
-(equivalent to a period of 30 days).
+series tends to remove power at frequencies <0.4 microHz
+(equivalent to periods >30 days).

@@ -194,5 +194,9 @@ scaling the observed solar oscillations and granulation, which were parameterize
 the :py:class:`~gadfly.SolarOscillatorKernel`. Note how the amplitudes,
 characteristic frequencies, and mode FWHM's vary with stellar properties. Cool!
 
+To compare these predicted kernel PSDs to real Kepler photometry of these stars,
+continue to :doc:`validation`.
+
 .. [5] These stars are chosen randomly from
    `Huber et al. (2011) <https://ui.adsabs.harvard.edu/abs/2011ApJ...743..143H/abstract>`_
+
