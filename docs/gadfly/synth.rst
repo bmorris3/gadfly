@@ -297,3 +297,51 @@ domain:
         ax.legend()
 
 Neat!
+
+Round tripping
+--------------
+
+One sanity check for the ``gadfly`` GP framework is to test that the
+methods "round-trip" successfully. Here, the "trip" is from: a
+"goal" power spectrum given by the ``gadfly`` kernels, to a synthetic
+light curve, and measuring the power spectrum of the synthetic observations
+to ensure that they are similar to the input kernel PSD. Let's
+try it:
+
+.. plot::
+    :include-source:
+
+    import numpy as np
+    import astropy.units as u
+    from lightkurve import LightCurve
+
+    from gadfly import (
+        SolarOscillatorKernel, GaussianProcess, PowerSpectrum
+    )
+
+    # reproduces the solar granulation and p-mode power spectrum:
+    kernel = SolarOscillatorKernel()
+
+    # we'll synthesize a light curve at these times:
+    t = np.linspace(0, 100, int(1e5)) * u.d
+
+    # initialize a Gaussian process:
+    gp = GaussianProcess(kernel, t=t)
+
+    # generate a synthetic flux series at times ``t``:
+    synth_flux = gp.sample(return_quantity=True)
+
+    # Put these fluxes in a light curve object:
+    synth_lc = LightCurve(time=t, flux=synth_flux)
+
+    # Generate a binned power spectrum from the observations:
+    synth_ps = PowerSpectrum.from_light_curve(synth_lc).bin(50)
+
+    # Compare the gadfly kernel PSD with the (binned) synthetic flux PSD:
+    kernel.plot(
+        obs=synth_ps
+    )
+
+The measured (binned) power spectrum of the synthetic observations (black)
+indeed matches the goal power spectrum set by the
+:py:class:`~gadfly.SolarOscillatorKernel` (in red). 

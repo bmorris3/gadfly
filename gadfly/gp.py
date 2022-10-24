@@ -19,8 +19,6 @@ class GaussianProcess(CeleriteGaussianProcess):
     in ``gadfly``.
     """
 
-    # conditional_distribution = ConditionalDistribution
-
     def __init__(self, kernel, t=None, mean=0.0, light_curve=None, **kwargs):
         """
         Parameters
@@ -155,9 +153,9 @@ class GaussianProcess(CeleriteGaussianProcess):
             )
             return value_in_original_units
 
-        raise NotImplementedError(
-            "Must be initialized with a light curve and `power` must be 1 or 2."
-        )
+        else:
+            # otherwise return the flux with units of ppm:
+            return u.Quantity(value_in_ppm, unit=cds.ppm)
 
     def compute(
         self, t, yerr=None, diag=None, check_sorted=True, quiet=False
