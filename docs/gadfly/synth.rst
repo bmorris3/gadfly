@@ -103,10 +103,10 @@ To plot them, we'll take advantage of a few features in :py:mod:`~astropy.visual
             vertical_offset = 1e3 * i * lc.flux.unit
             plt.plot(
                 lc.time,
-                 - vertical_offset,
+                synthetic_light_curves[i-1] - vertical_offset,
                 alpha=0.3, label=f'Synthetic ({i})'
             )
-        plt.legend(bbox_to_anchor=(1, 1))
+        plt.legend(loc='lower right', framealpha=1)
 
 .. plot::
 
