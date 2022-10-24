@@ -1,7 +1,7 @@
 Synthesize light curves
 =======================
 
-In :ref:`validation` we showed that kernels given by
+In :doc:`validation` we showed that kernels given by
 ``gadfly`` reproduce the power spectra of Kepler stars. Now suppose
 we want to generate synthetic light curves using the kernels
 produced by ``gadfly``.
@@ -11,7 +11,7 @@ Generate realistic fake observations
 ------------------------------------
 
 Let's generate synthetic observations of a star that we examined in the
-previous tutorial in :ref:`validation`, the horizontal branch
+previous tutorial in :doc:`validation`, the horizontal branch
 star KIC 9333184. First we import the packages we will need.
 
 .. code-block:: python
