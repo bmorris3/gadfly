@@ -26,8 +26,6 @@ star KIC 9333184. First we import the packages we will need.
 
     from lightkurve import search_lightcurve
 
-    from celerite2 import GaussianProcess
-
     from gadfly import (
         StellarOscillatorKernel,
         Hyperparameters, GaussianProcess
@@ -119,8 +117,6 @@ To plot them, we'll take advantage of a few features in :py:mod:`~astropy.visual
     from astropy.visualization import quantity_support, time_support
 
     from lightkurve import search_lightcurve
-
-    from celerite2 import GaussianProcess
 
     from gadfly import (
         StellarOscillatorKernel,
@@ -238,8 +234,6 @@ domain:
     from astropy.visualization import quantity_support, time_support
 
     from lightkurve import search_lightcurve
-
-    from celerite2 import GaussianProcess
 
     from gadfly import (
         StellarOscillatorKernel,
