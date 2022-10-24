@@ -93,7 +93,7 @@ Now we'll call a big loop to do most of the work:
         # scale the set of solar hyperparameters for each
         # Kepler star, given their (spectroscopic) stellar parameters
         hp = Hyperparameters.for_star(
-            mass, radius, temperature, luminosity
+            mass, radius, temperature, luminosity, quiet=True
         )
 
         # Assemble a celerite2-compatible kernel for the star:
@@ -170,7 +170,7 @@ Ok, let's see the output:
         # scale the set of solar hyperparameters for each
         # Kepler star, given their (spectroscopic) stellar parameters
         hp = Hyperparameters.for_star(
-            mass, radius, temperature, luminosity
+            mass, radius, temperature, luminosity, quiet=True
         )
 
         # Assemble a celerite2-compatible kernel for the star:

@@ -7,7 +7,7 @@ from astropy.table import QTable, Table
 from astropy.time import Time
 from astropy.utils.data import download_file
 
-from gadfly.psd import ppm
+from .psd import ppm
 
 __all__ = ['download_soho_virgo_time_series']
 

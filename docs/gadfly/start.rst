@@ -128,7 +128,7 @@ generalization of the :py:class:`~gadfly.SolarOscillatorKernel`.
         # scale the set of solar hyperparameters for each
         # Kepler star, given their (spectroscopic) stellar parameters
         hp = Hyperparameters.for_star(
-            mass, rad, temp, lum
+            mass, rad, temp, lum, quiet=True
         )
 
         # Assemble a celerite2-compatible kernel for the star:
@@ -170,7 +170,7 @@ generalization of the :py:class:`~gadfly.SolarOscillatorKernel`.
         # scale the set of solar hyperparameters for each
         # Kepler star, given their (spectroscopic) stellar parameters
         hp = Hyperparameters.for_star(
-            mass, radius, temperature, luminosity
+            mass, radius, temperature, luminosity, quiet=True
         )
 
         # Assemble a celerite2-compatible kernel for the star:

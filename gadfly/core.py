@@ -1,15 +1,21 @@
 import os
 import json
+import warnings
 
 import numpy as np
+
 from celerite2 import terms
+
 import astropy.units as u
+from astropy.utils.exceptions import AstropyUserWarning
 
 from . import scale
 from .psd import plot_power_spectrum
 
 __all__ = [
-    'Hyperparameters', 'StellarOscillatorKernel', 'SolarOscillatorKernel'
+    'Hyperparameters',
+    'StellarOscillatorKernel',
+    'SolarOscillatorKernel'
 ]
 
 dirname = os.path.dirname(os.path.abspath(__file__))
@@ -138,25 +144,33 @@ class Hyperparameters(list):
                     mass, temperature, luminosity
                 )
 
-                scaled_hyperparameters.append(
-                    dict(
-                        hyperparameters=dict(
-                            S0=scale_S0,
-                            w0=scaled_w0,
-                            Q=params['Q']),
-                        metadata=item['metadata']
+                if scaled_w0 > 0:
+                    scaled_hyperparameters.append(
+                        dict(
+                            hyperparameters=dict(
+                                S0=scale_S0,
+                                w0=scaled_w0,
+                                Q=params['Q']),
+                            metadata=item['metadata']
+                        )
                     )
-                )
+                else:
+                    if not quiet:
+                        msg = (
+                            "The scaled solar hyperparameter with frequency "
+                            f"w0(old)={params['w0']:.0f} is being scaled to "
+                            f"w0(new)={scaled_w0:.0f}, which is not positive. "
+                            f"This kernel term will be omitted."
+                        )
+                        warnings.warn(msg, AstropyUserWarning)
 
             # scale the hyperparameters for the p-mode oscillations:
             else:
                 params = item['hyperparameters']
 
-                # scale the p-mode amplitudes, along with the
-                # granulation scaling:
+                # scale the p-mode amplitudes
                 scaled_S0 = (
-                    params['S0'] * scale_factors['p_mode_amps'] *
-                    scale.granulation_amplitude(mass, temperature, luminosity)
+                    params['S0'] * scale_factors['p_mode_amps']
                 )
 
                 # scale the p-mode frequencies
@@ -171,15 +185,25 @@ class Hyperparameters(list):
                 # Q factor, so we divide by the scale factor instead of multiplying it.
                 scaled_Q = params['Q'] / scale_factors['fwhm']
 
-                scaled_hyperparameters.append(
-                    dict(
-                        hyperparameters=dict(
-                            S0=scaled_S0,
-                            w0=scaled_w0,
-                            Q=scaled_Q),
-                        metadata=item['metadata']
+                if scaled_w0 > 0:
+                    scaled_hyperparameters.append(
+                        dict(
+                            hyperparameters=dict(
+                                S0=scaled_S0,
+                                w0=scaled_w0,
+                                Q=scaled_Q),
+                            metadata=item['metadata']
+                        )
                     )
-                )
+                else:
+                    if not quiet:
+                        msg = (
+                            "The scaled solar (p-mode) hyperparameter with frequency "
+                            f"w0(old)={params['w0']:.0f} is being scaled to "
+                            f"w0(new)={scaled_w0:.0f}, which is not positive. "
+                            f"This kernel term will be omitted."
+                        )
+                        warnings.warn(msg, AstropyUserWarning)
 
         return cls(scaled_hyperparameters, scale_factors, name)
 

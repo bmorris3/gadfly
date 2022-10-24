@@ -19,6 +19,7 @@ stars with granulation and p-mode oscillations. The source code is available
    gadfly/install.rst
    gadfly/start.rst
    gadfly/validation.rst
+   gadfly/synth.rst
    gadfly/reference.rst
 
 
