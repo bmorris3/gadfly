@@ -170,20 +170,22 @@ class Hyperparameters(list):
 
                 # scale the p-mode amplitudes
                 scaled_S0 = (
-                    params['S0'] * scale_factors['p_mode_amps']
+                    params['S0'] * scale_factors['p_mode_amps'] * scale.granulation_amplitude(
+                        mass, temperature, luminosity
+                    )
                 )
 
                 # scale the p-mode frequencies
                 solar_delta_nu = (
-                    params['w0'] / (2 * np.pi) * u.uHz -
-                    scale._solar_nu_max
+                    params['w0'] / (2 * np.pi) * u.uHz - scale._solar_nu_max
                 )
                 scaled_delta_nu = solar_delta_nu * scale_factors['delta_nu']
                 scaled_w0 = 2 * np.pi * (scaled_nu_max + scaled_delta_nu).to(u.uHz).value
 
-                # scale the quality factors. The FWHM is proportional to the inverse of the
-                # Q factor, so we divide by the scale factor instead of multiplying it.
-                scaled_Q = params['Q'] / scale_factors['fwhm']
+                # scale the quality factors by scaling the p-mode peaks' FWHM:
+                unscaled_fwhm = scaled_w0 / (2 * params['Q'])  # this goes like tau^-1
+                scaled_fwhm = unscaled_fwhm * scale_factors['fwhm']
+                scaled_Q = scaled_w0 / (2 * scaled_fwhm)
 
                 if scaled_w0 > 0:
                     scaled_hyperparameters.append(

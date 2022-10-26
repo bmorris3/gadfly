@@ -206,20 +206,21 @@ def fwhm(temperature, quiet=False):
     .. [1] `Corsaro et al. (2015)
        <https://ui.adsabs.harvard.edu/abs/2015A%26A...579A..83C/abstract>`_
     """
-    if not quiet and temperature < 4900 * u.K:
-        message = (
-            "The p-mode FWHM scaling relations from Corsaro "
-            "et al. (2015) are only valid for "
-            "effective temperatures >4900 K, but you "
-            f"gave temperature={temperature}. The algorithm will proceed "
-            f"by fixing temperature=4900 K within the calculation "
-            f"for the p-mode FWHM scaling (only)."
-        )
-        warnings.warn(message, AstropyUserWarning)
+    if temperature < 4900 * u.K:
+        if not quiet:
+            message = (
+                "The p-mode FWHM scaling relations from Corsaro "
+                "et al. (2015) are only valid for "
+                "effective temperatures >4900 K, but you "
+                f"gave temperature={temperature}. The algorithm will proceed "
+                f"by fixing temperature=4900 K within the calculation "
+                f"for the p-mode FWHM scaling (only)."
+            )
+            warnings.warn(message, AstropyUserWarning)
+        temperature = 4900 * u.K
 
     return float(
-        _fwhm(temperature) /
-        _fwhm(_solar_temperature)
+        _fwhm(_solar_temperature) / _fwhm(temperature)
     )
 
 

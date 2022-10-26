@@ -105,17 +105,17 @@ Now we'll call a big loop to do most of the work:
         # download the Kepler light curve:
         lc = get_light_curve(target_name)
 
-        # Compute the power spectrum, bin it up into 600 bins:
+        # Compute the power spectrum:
         ps = PowerSpectrum.from_light_curve(
             lc, interpolate_and_detrend=True,
             name=target_name,
             detrend_poly_order=3
-        ).bin(600)
+        )
 
         # Plot the binned PSD and the kernel PSD. This plot function
         # takes lots of keyword arguments so you can fine-tune your
         # plots:
-        ps.plot(
+        ps.bin(600).plot(
             ax=axis,
             kernel=kernel,
             freq=ps.frequency,
@@ -192,14 +192,14 @@ Ok, let's see the output:
                     target_name, mission='Kepler', cadence='long'
                 ).download_all()
 
-        # Compute the power spectrum, bin it:
+        # Compute the power spectrum:
         ps = PowerSpectrum.from_light_curve(
             lc, interpolate_and_detrend=True, name=target_name,
             detrend_poly_order=3
-        ).bin(600)
+        )
 
         # Plot the binned PSD of the light curve:
-        ps.plot(
+        ps.bin(600).plot(
             ax=axis,
             kernel=kernel,
             freq=ps.frequency,
@@ -218,10 +218,8 @@ Ok, let's see the output:
         kepler_cutoff_frequency = (1 / (30 * u.day)).to(u.uHz).value
         axis.axvspan(0, kepler_cutoff_frequency, color='silver', alpha=0.1)
         axis.set_xlim(1e-1, 1e4)
-        axis.set_ylim(
-            np.nanmin(ps.power.value) / 5,
-            np.nanmax(ps.power.value) * 5
-        )
+        axis.set_ylim(0.1, 5 * np.nanmax(ps.power.value))
+
     fig.tight_layout()
 
 The p-modes are shifting in frequency and amplitude, and the separation between
