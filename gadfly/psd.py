@@ -333,6 +333,20 @@ class PowerSpectrum:
         self.error = error
         self.name = name
 
+    @property
+    def omega(self):
+        """
+        Angular frequency.
+
+        Returns a numpy array of :math:`\\omega = 2 \\pi f`
+        with f in units of [uHz].
+
+        Returns
+        -------
+        omegas : ~numpy.ndarray
+        """
+        return 2 * np.pi * self.frequency.to(u.uHz).value
+
     def bin(self, bins=None, **kwargs):
         """
         Bin the power spectrum.

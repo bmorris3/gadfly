@@ -2,7 +2,7 @@
 import numpy as np
 
 import astropy.units as u
-from astropy.units import cds
+from astropy.units import cds  # noqa
 from astropy.time import Time
 
 from celerite2 import GaussianProcess as CeleriteGaussianProcess
@@ -78,7 +78,7 @@ class GaussianProcess(CeleriteGaussianProcess):
 
         return time.to(1 / freq_unit).value
 
-    def _flux_to_ppm(self, flux, flux_unit=cds.ppm, is_error=False):
+    def _flux_to_ppm(self, flux, flux_unit=u.cds.ppm, is_error=False):
         """
         Convert fluxes into units compatible with the parameterization
         of kernel hyperparameters in gadfly.
@@ -155,7 +155,7 @@ class GaussianProcess(CeleriteGaussianProcess):
 
         else:
             # otherwise return the flux with units of ppm:
-            return u.Quantity(value_in_ppm, unit=cds.ppm)
+            return u.Quantity(value_in_ppm, unit=u.cds.ppm)
 
     def compute(
         self, t, yerr=None, diag=None, check_sorted=True, quiet=False

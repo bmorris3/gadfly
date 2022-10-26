@@ -344,4 +344,4 @@ try it:
 
 The measured (binned) power spectrum of the synthetic observations (black)
 indeed matches the goal power spectrum set by the
-:py:class:`~gadfly.SolarOscillatorKernel` (in red). 
+:py:class:`~gadfly.SolarOscillatorKernel` (in red).
