@@ -170,8 +170,8 @@ To plot them, we'll take advantage of a few features in :py:mod:`~astropy.visual
 
 Looks rather believable!
 
-Gap-filling with realistic stellar noise
-----------------------------------------
+Fill gaps with realistic stellar noise
+--------------------------------------
 
 Kepler observations sometimes have data gaps of up to a few
 days at a time. We can use a trick with ``gadfly`` kernels

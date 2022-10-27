@@ -227,8 +227,8 @@ begin to diverge at low frequencies because detrending applied to the Kepler tim
 series tends to remove power at frequencies <0.4 microHz
 (equivalent to periods >30 days).
 
-Advanced
---------
+Shot noise
+----------
 
 In the examples above, the power spectral density in each ``gadfly`` kernel falls off
 rapidly with increasing frequency, since ultimately we have modeled the Sun as a
@@ -260,7 +260,7 @@ kernel:
             ShotNoiseKernel.from_kepler_light_curve(light_curve)
         )
 
-Let's now run the adapted code on a few new stars (click the "Source code" link below
+Let's now run the adapted code on the first two stars (click the "Source code" link below
 to see the code that generates this plot):
 
 .. plot::
@@ -278,14 +278,14 @@ to see the code that generates this plot):
     )
 
     # Some (randomly chosen) real stars from Huber et al. (2011)
-    kics = [3427720, 8379927, 8416311]
-    masses = [1.1, 1.3, 1.5] * u.M_sun
-    radii = [1.1, 1.2, 2.2] * u.R_sun
-    temperatures = [5780, 5763, 6259] * u.K
-    luminosities = [1.3, 1.3, 6.9] * u.L_sun
-    cadences = np.ones_like(kics) * u.min
+    kics = [9333184, 8416311]
+    masses = [0.9, 1.5] * u.M_sun
+    radii = [10.0, 2.2] * u.R_sun
+    temperatures = [4919, 6259] * u.K
+    luminosities = [52.3, 6.9] * u.L_sun
+    cadences = [30, 1] * u.min
 
-    fig, axes = plt.subplots(len(kics), 1, figsize=(10, 7), sharex=True)
+    fig, axes = plt.subplots(len(kics), 1, figsize=(8, 5), sharex=True)
 
     stellar_props = [
         kics, masses, radii, temperatures,
