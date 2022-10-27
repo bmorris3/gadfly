@@ -109,7 +109,7 @@ Now we'll call a big loop to do most of the work:
         ps = PowerSpectrum.from_light_curve(
             lc, interpolate_and_detrend=True,
             name=target_name,
-            detrend_poly_order=3
+            detrend_poly_order=1
         )
 
         # Plot the binned PSD and the kernel PSD. This plot function
@@ -120,7 +120,6 @@ Now we'll call a big loop to do most of the work:
             kernel=kernel,
             freq=ps.frequency,
             legend=True,
-            p_mode_inset=False,
             n_samples=5e3,
             label_kernel='Pred. kernel',
             label_obs=target_name,
@@ -195,7 +194,7 @@ Ok, let's see the output:
         # Compute the power spectrum:
         ps = PowerSpectrum.from_light_curve(
             lc, interpolate_and_detrend=True, name=target_name,
-            detrend_poly_order=3
+            detrend_poly_order=1
         )
 
         # Plot the binned PSD of the light curve:
@@ -204,7 +203,6 @@ Ok, let's see the output:
             kernel=kernel,
             freq=ps.frequency,
             legend=True,
-            p_mode_inset=False,
             n_samples=5e3,
             label_kernel='Pred. kernel',
             label_obs=target_name,
@@ -228,3 +226,116 @@ also shift in frequency and amplitude. The kernel PSD (in color) and observation
 begin to diverge at low frequencies because detrending applied to the Kepler time
 series tends to remove power at frequencies <0.4 microHz
 (equivalent to periods >30 days).
+
+Advanced
+--------
+
+In the examples above, the power spectral density in each ``gadfly`` kernel falls off
+rapidly with increasing frequency, since ultimately we have modeled the Sun as a
+sum of simple harmonic oscillators. Photometric observations taken with a perfect
+instrument, observing a non-rotating star, could still be expected to have a Gaussian
+white noise component in their power spectra due to Poisson error (shot noise). In
+practice, this imposes a "floor" at high frequencies, where shot noise kicks in and
+prevents the rapid decline of the observed stellar power spectrum.
+
+We can approximate this behavior in ``gadfly`` with a convenience kernel called
+:py:class:`~gadfly.ShotNoiseKernel`.  If you have a Kepler light curve downloaded
+from MAST, like the ones you can get from :py:func:`~lightkurve.search_lightcurve`,
+you can pass it along to the :py:meth:`~gadfly.ShotNoiseKernel.from_kepler_light_curve`
+class method to create a simple floor in your stellar oscillator kernel. We can now adapt
+the example above by editing the block within the big loop to create our composite
+kernel:
+
+.. code-block:: python
+
+        light_curve = search_lightcurve(
+            name, mission='Kepler', quarter=range(6), cadence='short'
+        ).download_all()
+
+        kernel = (
+            # kernel for scaled stellar oscillations and granulation
+            StellarOscillatorKernel(hp) +
+
+            # add in a kernel for Kepler shot noise
+            ShotNoiseKernel.from_kepler_light_curve(light_curve)
+        )
+
+Let's now run the adapted code on a few new stars (click the "Source code" link below
+to see the code that generates this plot):
+
+.. plot::
+
+    import warnings
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+    import astropy.units as u
+    from lightkurve import search_lightcurve
+
+    from gadfly import (
+        Hyperparameters, PowerSpectrum,
+        StellarOscillatorKernel, ShotNoiseKernel
+    )
+
+    # Some (randomly chosen) real stars from Huber et al. (2011)
+    kics = [3427720, 8379927, 8416311]
+    masses = [1.1, 1.3, 1.5] * u.M_sun
+    radii = [1.1, 1.2, 2.2] * u.R_sun
+    temperatures = [5780, 5763, 6259] * u.K
+    luminosities = [1.3, 1.3, 6.9] * u.L_sun
+    cadences = np.ones_like(kics) * u.min
+
+    fig, axes = plt.subplots(len(kics), 1, figsize=(10, 7), sharex=True)
+
+    stellar_props = [
+        kics, masses, radii, temperatures,
+        luminosities, cadences, axes
+    ]
+
+    # iterate over each star:
+    for i, (kic, mass, rad, temp, lum, cad, axis) in enumerate(zip(*stellar_props)):
+        name = f'KIC {kic}'
+        hp = Hyperparameters.for_star(
+            mass, rad, temp, lum, name=name, quiet=True
+        )
+
+        cadence_str = 'short' if cad == 1*u.min else 'long'
+        light_curve = search_lightcurve(
+            name, mission='Kepler', quarter=range(6),
+            cadence=cadence_str
+        ).download_all()
+
+        kernel = (
+            # kernel for scaled stellar oscillations and granulation
+            StellarOscillatorKernel(hp) +
+
+            # add in a kernel for Kepler shot noise
+            ShotNoiseKernel.from_kepler_light_curve(light_curve)
+        )
+
+        ps = PowerSpectrum.from_light_curve(
+            light_curve, name=name,
+            interpolate_and_detrend=True, detrend_poly_order=1
+        ).bin(200)
+
+        kernel_kw = dict(color=f"C{i}", alpha=0.8)
+        obs_kw = dict(color='k', marker='.', lw=0)
+        freq = np.logspace(-0.5, 4, int(1e3)) * u.uHz
+        kernel.plot(
+            ax=axis,
+            p_mode_inset=False,
+            freq=freq,
+            obs=ps,
+            obs_kwargs=obs_kw,
+            kernel_kwargs=kernel_kw,
+            n_samples=1e4,
+            title=""
+        )
+
+        lower_y = np.nanmin(ps.power).value / 3
+        lower_x = (1 / (30 * u.d)).to(u.uHz).value
+        axis.set_ylim([lower_y, None])
+        axis.set_xlim([lower_x, None])
+        if i < len(kics) - 1:
+            axis.set_xlabel(None)
+    fig.tight_layout()

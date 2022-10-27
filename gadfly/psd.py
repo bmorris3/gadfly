@@ -1,13 +1,11 @@
 import numpy as np
 import astropy.units as u
+from astropy.units import cds  # noqa
 
 from .interp import interpolate_missing_data
 
-doc = "A unit representing parts-per-million"  # ...is useful here
-ppm = u.def_unit(
-    'ppm', (100 * u.percent) / 1e6, doc=doc
-)
-u.add_enabled_units(ppm)
+# aliased here for convenience
+ppm = u.cds.ppm
 
 __all__ = ['PowerSpectrum', 'plot_power_spectrum']
 
@@ -23,6 +21,17 @@ def to_psd_units(power, assumed_flux_unit=ppm, assumed_freq_unit=u.uHz):
     return power.to(ppm**2 / u.uHz)
 
 
+def to_freq_units(freq, assumed_freq_unit=u.uHz):
+    """
+    Return ``freq`` with units of uHz.
+    If ``freq`` has no units, assume it has units of
+    ``[uHz]``.
+    """
+    if not hasattr(freq, 'unit'):
+        freq = freq * assumed_freq_unit
+    return freq.to(assumed_freq_unit)
+
+
 def plot_power_spectrum(
     ax=None,
     kernel=None,
@@ -30,7 +39,7 @@ def plot_power_spectrum(
     freq=None,
     figsize=(8, 4),
     n_samples=1000,
-    p_mode_inset=True,
+    p_mode_inset=False,
     legend=True,
     scaling_low_freq='loglog',
     scaling_p_mode='semilogy',
@@ -40,7 +49,7 @@ def plot_power_spectrum(
     label_kernel=None,
     label_obs=None,
     label_inset='p-modes',
-    kernel_kwargs=dict(color='r'),
+    kernel_kwargs=dict(),
     obs_kwargs=dict(color='k', marker='o', lw=0),
     inset_kwargs=dict(color='k', marker='.', lw=0),
 ):
@@ -108,20 +117,25 @@ def plot_power_spectrum(
             if kernel is not None:
 
                 if label_kernel is None:
-                    label_kernel = 'Model'
+                    if kernel.name is None:
+                        label_kernel = 'Model'
+                    else:
+                        label_kernel = kernel.name
 
                 getattr(axis, plot_method)(
-                    freq,
+                    to_freq_units(freq),
                     to_psd_units(kernel.get_psd(2 * np.pi * freq.to(u.uHz).value)),
                     label=label_kernel, **kernel_kwargs
                 )
             if obs is not None:
+                if obs.name is not None and label_obs is None:
+                    label_obs = obs.name
 
-                if label_obs is None:
+                elif label_obs is None:
                     label_obs = 'Observations'
 
                 getattr(axis, plot_method)(
-                    obs.frequency,
+                    to_freq_units(obs.frequency),
                     to_psd_units(obs.power),
                     label=label_obs, **obs_plot_kwargs
                 )
@@ -208,9 +222,9 @@ def bin_power_spectrum(power_spectrum, bins=None, log=True, **kwargs):
     power = power_spectrum.power
 
     if log:
-        freq_axis = np.log10(freq.value)
+        freq_axis = np.log10(freq.to(u.uHz).value)
     else:
-        freq_axis = freq.value
+        freq_axis = freq.to(u.uHz).value
 
     # Set the number of log-spaced frequency bins
     if bins is None:
@@ -327,11 +341,12 @@ class PowerSpectrum:
     """
 
     @u.quantity_input(frequency=u.uHz, power=ppm**2/u.uHz)
-    def __init__(self, frequency, power, error=None, name=None):
+    def __init__(self, frequency, power, error=None, name=None, norm=None):
         self.frequency = frequency
         self.power = power
         self.error = error
         self.name = name
+        self.norm = norm
 
     @property
     def omega(self):
@@ -346,6 +361,18 @@ class PowerSpectrum:
         omegas : ~numpy.ndarray
         """
         return 2 * np.pi * self.frequency.to(u.uHz).value
+
+    @property
+    def light_curve_rms(self):
+        """
+        Convert from power spectral density to the approximate
+        root mean square of the original light curve.
+
+        Returns
+        -------
+        rms : ~astropy.units.Quantity
+        """
+        return (self.power * self.norm).to(ppm**2) ** 0.5
 
     def bin(self, bins=None, **kwargs):
         """
@@ -375,15 +402,20 @@ class PowerSpectrum:
 
         Parameters
         ----------
-        light_curve : ~lightkurve.lightcurve.LightCurve
-            Light curve
+        light_curve : ~lightkurve.lightcurve.LightCurve, ~lightkurve.lightkurve.LightCurveCollection # noqa
+            Light curve(s)
         include_zero_freq : bool
             Include ``frequency=0`` in the first entry of the results.
         name : str
             Name for the power spectrum
+        interpolate_and_detrend : bool
+        detrend_poly_order : int
         """
+        from lightkurve import LightCurve, LightCurveCollection
+
         if interpolate_and_detrend:
-            from lightkurve import LightCurve, LightCurveCollection
+            if not isinstance(light_curve, LightCurveCollection):
+                light_curve = LightCurveCollection([light_curve])
 
             # Interpolate over missing data points in each quarter, normalize by a
             # nth order polynomial to remove systematic trends
@@ -407,13 +439,20 @@ class PowerSpectrum:
                 )
                 lcs_interped.append(lc_int)
 
-            # Stitch together all quarters, interpolate again
-            slc = LightCurveCollection(lcs_interped).stitch(lambda x: x)
+            if len(lcs_interped) > 1:
+                # Stitch together all quarters, interpolate again
+                slc = LightCurveCollection(lcs_interped).stitch(lambda x: x)
+            else:
+                slc = lcs_interped[0]
+
             interp_t, interp_f = interpolate_missing_data(slc.time.jd, slc.flux)
             d = (interp_t[1] - interp_t[0]) * u.d
             flux = interp_f.copy() * ppm
             name = light_curve[0].meta.get('name', name)
         else:
+            if isinstance(light_curve, LightCurveCollection):
+                light_curve = light_curve.stitch(lambda x: x)
+
             d = (light_curve.time[1] - light_curve.time[0]).to(u.d)
             flux = light_curve.flux
             name = light_curve.meta.get('name', name)
@@ -429,12 +468,13 @@ class PowerSpectrum:
         freq = np.fft.rfftfreq(len(flux_ppm), d).to(u.uHz)
         fft = np.fft.rfft(flux_ppm)
 
-        # The FFT must be normalized by this factor:
-        fft_normalization = d / ((2 * np.pi) ** 0.5 * len(flux_ppm))
+        # The FFT must be scaled by this factor, in addition
+        # to the normalization by the length of the flux vector:
+        norm = d / (2 * np.pi) ** 0.5 / len(flux_ppm)
 
         # The power spectrum in the usual asteroseismic units:
         power_fft = to_psd_units(
-            np.real(fft * np.conj(fft)) * ppm ** 2 * fft_normalization
+            np.real(fft * np.conj(fft)) * ppm ** 2 * norm
         )
 
         # skip `frequency==0` if necessary:
@@ -442,7 +482,7 @@ class PowerSpectrum:
             freq = freq[1:]
             power_fft = power_fft[1:]
 
-        return cls(freq, power_fft, name=name)
+        return cls(freq, power_fft, name=name, norm=norm)
 
     def plot(self, **kwargs):
         """
@@ -488,5 +528,5 @@ class PowerSpectrum:
             args.append(self.error[bounds])
 
         return PowerSpectrum(
-            self.frequency[bounds], self.power[bounds], *args, name=name
+            self.frequency[bounds], self.power[bounds], *args, name=name, norm=self.norm
         )

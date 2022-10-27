@@ -45,6 +45,7 @@ observed power spectra.
 
     # Plot the kernel's PSD, and the observed (binned) solar PSD:
     fig, ax = kernel.plot(
+        p_mode_inset=True,
         # also plot the observed power spectrum
         obs=ps.bin(bins=100)
     )
@@ -54,10 +55,10 @@ the several plateaus in power at mid-range frequencies correspond to
 meso-granulation, g-modes, and granulation [2]_. The series of
 peaks near a few thousand microhertz are the p-mode oscillations.
 
-The red model in the plot above is the power spectrum of the
+The blue model in the plot above is the power spectrum of the
 :py:class:`~gadfly.SolarOscillatorKernel`, which returns a
 kernel object that can be used to compute GPs with ``celerite2`` [3]_.
-The kernel hyperparameters that define the shape of the red model kernel
+The kernel hyperparameters that define the shape of the blue model kernel
 are derived from a fit to the solar PSD observations from SOHO VIRGO [4]_.
 Under the hood, the :py:class:`~gadfly.SolarOscillatorKernel` is a sum of
 many simple harmonic oscillator kernels.
@@ -128,7 +129,8 @@ generalization of the :py:class:`~gadfly.SolarOscillatorKernel`.
         # scale the set of solar hyperparameters for each
         # Kepler star, given their (spectroscopic) stellar parameters
         hp = Hyperparameters.for_star(
-            mass, rad, temp, lum, quiet=True
+            mass, rad, temp, lum,
+            name=f'KIC {kic}', quiet=True
         )
 
         # Assemble a celerite2-compatible kernel for the star:
@@ -137,10 +139,7 @@ generalization of the :py:class:`~gadfly.SolarOscillatorKernel`.
         # Plot the kernel's PSD:
         kernel.plot(
             ax=ax,
-            p_mode_inset=False,
-            n_samples=5e3,
-            label_kernel=f'KIC {kic}',
-            kernel_kwargs=dict(color=f'C{i}')
+            n_samples=5e3
         )
 
     # Label the legend, set the power range in plot:
@@ -170,7 +169,8 @@ generalization of the :py:class:`~gadfly.SolarOscillatorKernel`.
         # scale the set of solar hyperparameters for each
         # Kepler star, given their (spectroscopic) stellar parameters
         hp = Hyperparameters.for_star(
-            mass, radius, temperature, luminosity, quiet=True
+            mass, radius, temperature, luminosity,
+            name=f'KIC {kic}', quiet=True
         )
 
         # Assemble a celerite2-compatible kernel for the star:
@@ -179,10 +179,7 @@ generalization of the :py:class:`~gadfly.SolarOscillatorKernel`.
         # Plot the kernel's PSD:
         kernel.plot(
             ax=ax,
-            p_mode_inset=False,
-            n_samples=5e3,
-            label_kernel=f'KIC {kic}',
-            kernel_kwargs=dict(color=f'C{i}')
+            n_samples=5e3
         )
 
     # Label the legend, set the power range in plot:
