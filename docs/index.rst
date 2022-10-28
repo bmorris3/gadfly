@@ -20,6 +20,7 @@ stars with granulation and p-mode oscillations. The source code is available
    gadfly/start.rst
    gadfly/validation.rst
    gadfly/synth.rst
+   gadfly/power_spectra.rst
    gadfly/reference.rst
 
 

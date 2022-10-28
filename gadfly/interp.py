@@ -53,7 +53,7 @@ def interpolate_missing_data(times, fluxes, cadences=None):
     interpolated_fluxes = np.concatenate([fluxes, interp_fluxes])
     interpolated_times = np.concatenate([times, missing_times])
 
-    # Sort the times, fluxes, so that you can compute the ACF on them:
+    # Sort the times, fluxes, so that you can compute the FFT of them:
     sort_by_time = np.argsort(interpolated_times)
     interpolated_fluxes = interpolated_fluxes[sort_by_time]
     interpolated_times = interpolated_times[sort_by_time]

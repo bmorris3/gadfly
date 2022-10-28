@@ -107,7 +107,7 @@ Now we'll call a big loop to do most of the work:
 
         # Compute the power spectrum:
         ps = PowerSpectrum.from_light_curve(
-            lc, interpolate_and_detrend=True,
+            lc,
             name=target_name,
             detrend_poly_order=1
         )
@@ -193,7 +193,7 @@ Ok, let's see the output:
 
         # Compute the power spectrum:
         ps = PowerSpectrum.from_light_curve(
-            lc, interpolate_and_detrend=True, name=target_name,
+            lc, name=target_name,
             detrend_poly_order=1
         )
 
@@ -228,7 +228,7 @@ series tends to remove power at frequencies <0.4 microHz
 (equivalent to periods >30 days).
 
 Shot noise
-----------
+**********
 
 In the examples above, the power spectral density in each ``gadfly`` kernel falls off
 rapidly with increasing frequency, since ultimately we have modeled the Sun as a
@@ -315,7 +315,7 @@ to see the code that generates this plot):
 
         ps = PowerSpectrum.from_light_curve(
             light_curve, name=name,
-            interpolate_and_detrend=True, detrend_poly_order=1
+            detrend_poly_order=1
         ).bin(200)
 
         kernel_kw = dict(color=f"C{i}", alpha=0.8)

@@ -1,6 +1,7 @@
 import numpy as np
 import astropy.units as u
 from astropy.units import cds  # noqa
+from astropy.timeseries import LombScargle
 
 from .interp import interpolate_missing_data
 
@@ -50,8 +51,9 @@ def plot_power_spectrum(
     label_obs=None,
     label_inset='p-modes',
     kernel_kwargs=dict(),
-    obs_kwargs=dict(color='k', marker='o', lw=0),
-    inset_kwargs=dict(color='k', marker='.', lw=0),
+    obs_kwargs=dict(),
+    inset_kwargs=dict(),
+    create_new_figure=False
 ):
     """
     Plot a power spectrum.
@@ -79,6 +81,7 @@ def plot_power_spectrum(
     kernel_kwargs : dict
     obs_kwargs : dict
     inset_kwargs : dict
+    create_new_figure : bool
 
     Returns
     -------
@@ -98,42 +101,56 @@ def plot_power_spectrum(
             np.concatenate([frequencies_all, frequencies_p_mode])
         )
 
-    if ax is None:
+    if ax is None and create_new_figure:
         fig, ax = plt.subplots(figsize=figsize)
-    else:
-        fig = plt.gcf()
+    elif ax is None:
+        ax = plt.gca()
+
+    fig = plt.gcf()
 
     if p_mode_inset:
         ax_inset = ax.inset_axes([0.5, 0.5, 0.47, 0.47])
     else:
         ax_inset = None
 
+    # Set default values, then overwrite them if supplied by user:
+    obs_kw = dict(marker='o', lw=0, mfc='none')
+    for k, v in obs_kwargs.items():
+        obs_kw[k] = v
+
+    kernel_kw = dict(lw=0.5)
+    for k, v in kernel_kwargs.items():
+        kernel_kw[k] = v
+
+    inset_kw = dict(marker='.', lw=0)
+    for k, v in inset_kwargs.items():
+        inset_kw[k] = v
+
     for i, (axis, plot_method, obs_plot_kwargs) in enumerate(zip(
         [ax, ax_inset],
         [scaling_low_freq, scaling_p_mode],
-        [obs_kwargs, inset_kwargs]
+        [obs_kw, inset_kw]
     )):
         if axis is not None:
             if kernel is not None:
-
                 if label_kernel is None:
                     if kernel.name is None:
                         label_kernel = 'Model'
                     else:
                         label_kernel = kernel.name
-
+                # call the plot method (i.e.: plt.semilogy, plt.loglog)
                 getattr(axis, plot_method)(
                     to_freq_units(freq),
                     to_psd_units(kernel.get_psd(2 * np.pi * freq.to(u.uHz).value)),
-                    label=label_kernel, **kernel_kwargs
+                    label=label_kernel, **kernel_kw
                 )
             if obs is not None:
                 if obs.name is not None and label_obs is None:
                     label_obs = obs.name
-
                 elif label_obs is None:
                     label_obs = 'Observations'
 
+                # call the plot method (i.e.: plt.semilogy, plt.loglog)
                 getattr(axis, plot_method)(
                     to_freq_units(obs.frequency),
                     to_psd_units(obs.power),
@@ -151,14 +168,6 @@ def plot_power_spectrum(
             ha='right'
         )
         ax.indicate_inset_zoom(ax_inset, edgecolor="silver")
-
-    if title is None:
-        if obs is not None:
-            title = obs.name
-        elif kernel is not None:
-            title = kernel.name
-        else:
-            title = 'Power spectrum'
 
     if legend:
         ax.legend()
@@ -341,12 +350,13 @@ class PowerSpectrum:
     """
 
     @u.quantity_input(frequency=u.uHz, power=ppm**2/u.uHz)
-    def __init__(self, frequency, power, error=None, name=None, norm=None):
+    def __init__(self, frequency, power, error=None, name=None, norm=None, detrended_lc=None):
         self.frequency = frequency
         self.power = power
         self.error = error
         self.name = name
         self.norm = norm
+        self.detrended_lc = detrended_lc
 
     @property
     def omega(self):
@@ -394,8 +404,8 @@ class PowerSpectrum:
 
     @classmethod
     def from_light_curve(
-        cls, light_curve, include_zero_freq=False, name=None,
-        interpolate_and_detrend=False, detrend_poly_order=5,
+        cls, light_curve, method='fft', include_zero_freq=False, name=None,
+        detrend=True, detrend_poly_order=3, save_detrended_lc=True
     ):
         """
         Compute the power spectrum from a light curve.
@@ -404,56 +414,85 @@ class PowerSpectrum:
         ----------
         light_curve : ~lightkurve.lightcurve.LightCurve, ~lightkurve.lightkurve.LightCurveCollection # noqa
             Light curve(s)
+        method : str, options are "fft" or "lomb-scargle"
+            Method used to compute the power spectrum.
         include_zero_freq : bool
             Include ``frequency=0`` in the first entry of the results.
         name : str
             Name for the power spectrum
-        interpolate_and_detrend : bool
+        detrend : bool
         detrend_poly_order : int
+        save_detrended_lc : bool
         """
         from lightkurve import LightCurve, LightCurveCollection
 
-        if interpolate_and_detrend:
-            if not isinstance(light_curve, LightCurveCollection):
-                light_curve = LightCurveCollection([light_curve])
+        available_methods = ['fft', 'lomb-scargle']
+        if not method.lower() in available_methods:
+            raise ValueError(f'PowerSpectrum.from_lightcurve was given '
+                             f'method="{method}", but it must be '
+                             f'one of: {available_methods}.')
 
+        # Interpolation is required if the PSD computation method is FFT
+        method_is_fft = method.lower() == 'fft'
+
+        if not isinstance(light_curve, LightCurveCollection):
+            light_curve = LightCurveCollection([light_curve])
+
+        if detrend:
             # Interpolate over missing data points in each quarter, normalize by a
             # nth order polynomial to remove systematic trends
             lcs_interped = []
             for lc in light_curve:
+                lc_flux_unit = lc.flux.unit
                 lc = lc.remove_nans().remove_outliers()
-
-                t, f = interpolate_missing_data(lc.time.jd, lc.flux.value)
+                if method_is_fft:
+                    t, f = interpolate_missing_data(lc.time.jd, lc.flux.value)
+                else:
+                    t, f = lc.time.jd, lc.flux.value
                 e = np.median(lc.flux_err) * np.ones_like(f)
 
-                fit = np.polyval(
-                    np.polyfit(t - t.mean(), f, detrend_poly_order),
-                    t - t.mean()
-                )
-                normed_flux = f / fit
+                # if the light curve is not given in units combatible with ppm,
+                # normalize it with a polynomial, center it at zero
+                if not lc_flux_unit.is_equivalent(ppm):
+                    fit = np.polyval(
+                        np.polyfit(t - t.mean(), f, detrend_poly_order),
+                        t - t.mean()
+                    )
+                    normed_flux = f / fit
+                    flux_ppm = 1e6 * np.array(normed_flux / np.median(normed_flux) - 1) * ppm
+                else:
+                    flux_ppm = f.copy()
+
                 lc_int = LightCurve(
                     time=t,
                     # convert detrended flux to ppm with zero-mean:
-                    flux=1e6 * np.array(normed_flux / np.median(normed_flux) - 1),
+                    flux=flux_ppm,
                     flux_err=e.value
                 )
                 lcs_interped.append(lc_int)
 
             if len(lcs_interped) > 1:
-                # Stitch together all quarters, interpolate again
                 slc = LightCurveCollection(lcs_interped).stitch(lambda x: x)
             else:
                 slc = lcs_interped[0]
 
-            interp_t, interp_f = interpolate_missing_data(slc.time.jd, slc.flux)
-            d = (interp_t[1] - interp_t[0]) * u.d
-            flux = interp_f.copy() * ppm
+            if method_is_fft:
+                # After stitching together all quarters, interpolate again to fill gaps
+                # between the quarters:
+                t, f = interpolate_missing_data(slc.time.jd, slc.flux.value)
+            else:
+                t, f = slc.time.jd, slc.flux.value
+
+            d = (t[1] - t[0]) * u.d
+            flux = f.copy() * ppm
+            time = t.copy() * u.day
             name = light_curve[0].meta.get('name', name)
         else:
             if isinstance(light_curve, LightCurveCollection):
                 light_curve = light_curve.stitch(lambda x: x)
 
             d = (light_curve.time[1] - light_curve.time[0]).to(u.d)
+            time = light_curve.time.jd * u.day
             flux = light_curve.flux
             name = light_curve.meta.get('name', name)
 
@@ -461,6 +500,26 @@ class PowerSpectrum:
             # if flux has no units, assume ppm:
             flux = flux * ppm
 
+        if method_is_fft:
+            freq, power, norm = cls._fft(flux, d)
+        else:
+            freq, power, norm = cls._lomb_scargle(time, flux, d)
+
+        # skip `frequency==0` if necessary:
+        if not include_zero_freq:
+            freq = freq[1:]
+            power = power[1:]
+
+        detrended_lc = LightCurve(time=time, flux=flux) if (detrend and save_detrended_lc) else None
+
+        return cls(freq, power, name=name, norm=norm, detrended_lc=detrended_lc)
+
+    @staticmethod
+    def _fft(flux, d):
+        """
+        Compute the power spectrum using the FFT. Inputs and outputs
+        are ~astropy.units.Quantity objects.
+        """
         # Strip units from flux:
         flux_ppm = flux.to(ppm).value
 
@@ -473,16 +532,24 @@ class PowerSpectrum:
         norm = d / (2 * np.pi) ** 0.5 / len(flux_ppm)
 
         # The power spectrum in the usual asteroseismic units:
-        power_fft = to_psd_units(
+        power = to_psd_units(
             np.real(fft * np.conj(fft)) * ppm ** 2 * norm
         )
+        return freq, power, norm
 
-        # skip `frequency==0` if necessary:
-        if not include_zero_freq:
-            freq = freq[1:]
-            power_fft = power_fft[1:]
+    @staticmethod
+    def _lomb_scargle(time, flux, d):
+        """
+        Compute the power spectrum using the Lomb-Scargle method.
+        Inputs and outputs are ~astropy.units.Quantity objects.
+        """
+        # use the rfftfreq method to get frequencies for consistency with fft method:
+        freq = np.fft.rfftfreq(len(flux), d).to(u.uHz)
 
-        return cls(freq, power_fft, name=name, norm=norm)
+        lomb_scargle = LombScargle(time, flux, normalization='psd')
+        norm = d / (2 * np.pi) ** 0.5
+        power = to_psd_units(norm * lomb_scargle.power(freq))
+        return freq, power, norm
 
     def plot(self, **kwargs):
         """

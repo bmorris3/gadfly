@@ -2,12 +2,12 @@ import os
 
 import numpy as np
 
+import astropy.units as u
+from astropy.units import cds  # noqa
 from astropy.io import fits
 from astropy.table import QTable, Table
 from astropy.time import Time
 from astropy.utils.data import download_file
-
-from .psd import ppm
 
 __all__ = ['download_soho_virgo_time_series']
 
@@ -88,7 +88,7 @@ def download_soho_virgo_time_series(full_time_series=False, cache=True, name='SO
         fluxes[raw_fluxes == -99] = interp_fluxes
 
         # convert the fluxes into units of ppm with zero mean:
-        fluxes = 1e6 * (fluxes / np.median(fluxes) - 1) * ppm
+        fluxes = 1e6 * (fluxes / np.median(fluxes) - 1) * u.cds.ppm
         # error = mad_std(fluxes)
 
         return LightCurve(
@@ -100,5 +100,5 @@ def download_soho_virgo_time_series(full_time_series=False, cache=True, name='SO
         times = tab['time'].data
 
         return LightCurve(
-            time=Time(times, format='jd'), flux=tab['flux'] * ppm, meta=meta
+            time=Time(times, format='jd'), flux=tab['flux'] * u.cds.ppm, meta=meta
         )
