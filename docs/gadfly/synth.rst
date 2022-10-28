@@ -342,6 +342,6 @@ try it:
         obs=synth_ps
     )
 
-The measured (binned) power spectrum of the synthetic observations (black)
+The measured (binned) power spectrum of the synthetic observations (orange)
 indeed matches the goal power spectrum set by the
 :py:class:`~gadfly.SolarOscillatorKernel` (in blue).

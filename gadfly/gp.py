@@ -213,7 +213,7 @@ class GaussianProcess(CeleriteGaussianProcess):
         kernel : subclass of ~celerite2.terms.Term
             Evaluate conditional distribution given this kernel
         return_quantity : bool
-            Return the fluxes as a ~astropy.units.Quantity in the same units as
+            Return the fluxes as a :py:class:`~astropy.units.Quantity` in the same units as
             the input light curve.
         """
         if t is not None and (isinstance(t, Time) or hasattr(t, 'unit')):
@@ -274,7 +274,7 @@ class GaussianProcess(CeleriteGaussianProcess):
             Note that the computational cost and scaling will be worse
             when using this parameter.
         return_quantity : bool
-            Return the fluxes as a ~astropy.units.Quantity in the same units as
+            Return the fluxes as a :py:class:`~astropy.units.Quantity` in the same units as
             the input light curve.
         """
 
@@ -378,7 +378,7 @@ class GaussianProcess(CeleriteGaussianProcess):
         include_mean : bool
             Include the mean function in the prediction.
         return_quantity : bool
-            Return the fluxes as a ~astropy.units.Quantity in the same units as
+            Return the fluxes as a :py:class:`~astropy.units.Quantity` in the same units as
             the input light curve.
         """
         result = super().sample(size=size, include_mean=include_mean)

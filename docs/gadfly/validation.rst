@@ -123,7 +123,6 @@ Now we'll call a big loop to do most of the work:
             n_samples=5e3,
             label_kernel='Pred. kernel',
             label_obs=target_name,
-            obs_kwargs=dict(marker='.', markersize=3, color='k', lw=0),
             kernel_kwargs=dict(color=f'C{i}', alpha=0.7),
             title=""
         )
@@ -206,7 +205,6 @@ Ok, let's see the output:
             n_samples=5e3,
             label_kernel='Pred. kernel',
             label_obs=target_name,
-            obs_kwargs=dict(marker='.', markersize=3, color='k', lw=0),
             kernel_kwargs=dict(color=f'C{i}', alpha=0.7),
             title=""
         )
