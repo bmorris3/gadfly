@@ -118,7 +118,7 @@ def plot_power_spectrum(
     for k, v in obs_kwargs.items():
         obs_kw[k] = v
 
-    kernel_kw = dict(lw=0.5)
+    kernel_kw = dict(lw=0.8)
     for k, v in kernel_kwargs.items():
         kernel_kw[k] = v
 

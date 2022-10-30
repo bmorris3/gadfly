@@ -115,15 +115,18 @@ Now we'll call a big loop to do most of the work:
         # Plot the binned PSD and the kernel PSD. This plot function
         # takes lots of keyword arguments so you can fine-tune your
         # plots:
+        obs_kw = dict(color='k', marker='.', lw=0)
+
         ps.bin(600).plot(
             ax=axis,
             kernel=kernel,
             freq=ps.frequency,
+            obs_kwargs=obs_kw,
             legend=True,
             n_samples=5e3,
             label_kernel='Pred. kernel',
             label_obs=target_name,
-            kernel_kwargs=dict(color=f'C{i}', alpha=0.7),
+            kernel_kwargs=dict(color=f'C{i}', alpha=0.9),
             title=""
         )
 
@@ -196,6 +199,8 @@ Ok, let's see the output:
             detrend_poly_order=1
         )
 
+        obs_kw = dict(color='k', marker='.', lw=0)
+
         # Plot the binned PSD of the light curve:
         ps.bin(600).plot(
             ax=axis,
@@ -205,7 +210,8 @@ Ok, let's see the output:
             n_samples=5e3,
             label_kernel='Pred. kernel',
             label_obs=target_name,
-            kernel_kwargs=dict(color=f'C{i}', alpha=0.7),
+            obs_kwargs=obs_kw,
+            kernel_kwargs=dict(color=f'C{i}', alpha=0.9),
             title=""
         )
 
@@ -316,7 +322,7 @@ to see the code that generates this plot):
             detrend_poly_order=1
         ).bin(200)
 
-        kernel_kw = dict(color=f"C{i}", alpha=0.8)
+        kernel_kw = dict(color=f"C{i}", alpha=0.9)
         obs_kw = dict(color='k', marker='.', lw=0)
         freq = np.logspace(-0.5, 4, int(1e3)) * u.uHz
         kernel.plot(
