@@ -1,0 +1,27 @@
+# %ECSV 1.0
+# ---
+# datatype:
+# - {name: KIC, datatype: int64}
+# - {name: numax, datatype: float64}
+# - {name: sig_numax, datatype: float64}
+# - {name: delta_nu, datatype: float64}
+# - {name: sig_Dnu, datatype: float64}
+# - {name: amp, datatype: float64}
+# - {name: sig_amp, datatype: float64}
+# - {name: cad_1, datatype: string}
+# - {name: ID, datatype: int64}
+# - {name: teff, datatype: float64}
+# - {name: sig_teff, datatype: float64}
+# - {name: lum, datatype: float64}
+# - {name: sig_lum, datatype: float64}
+# - {name: rad, datatype: float64}
+# - {name: sig_rad, datatype: float64}
+# - {name: mass, datatype: float64}
+# - {name: sig_mass, datatype: float64}
+# - {name: cad_2, datatype: int64}
+# schema: astropy-2.0
+KIC numax sig_numax delta_nu sig_Dnu amp sig_amp cad_1 ID teff sig_teff lum sig_lum rad sig_rad mass sig_mass cad_2
+4243803 15.198 1.134 1.856 0.085 112.191 12.151 LC 4243803 4903.0 200.0 299.06331 86.73608 24.00836 2.8783 2.61176 0.96933 1
+11550567 38.996 1.307 4.129 0.03 95.704 5.711 LC 11550567 4965.0 200.0 85.59522 15.53095 12.52538 0.5225 1.83549 0.23125 1
+4907665 180.565 5.903 14.11 0.679 32.09 3.702 SC 4907665 5089.0 200.0 15.22348 3.95762 5.02802 0.52053 1.38654 0.45084 0
+6119013 405.823 9.429 26.112 2.377 14.811 1.463 SC 6119013 5225.0 200.0 7.48061 2.989 3.34349 0.61699 1.39628 0.81371 0
