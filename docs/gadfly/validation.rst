@@ -2,7 +2,7 @@ Validation with Kepler
 ======================
 
 Outline
--------
+*******
 
 All of those scaling relations in :py:mod:`~gadfly.scale`
 sound great, but do they yield kernels that accurately
@@ -343,3 +343,99 @@ to see the code that generates this plot):
         if i < len(kics) - 1:
             axis.set_xlabel(None)
     fig.tight_layout()
+
+
+Power spectrum sequence
+-----------------------
+
+Now let's plot the observed and predicted power spectra for a
+few Kepler stars with spectroscopic parameters from Huber et al.
+(2011) [1]_. We will use the :py:class:`~gadfly.StellarOscillatorKernel`
+to predict the stellar power spectrum, and we will add in a
+:py:class:`~gadfly.ShotNoiseKernel` to estimate the noise that
+Kepler would observe for each target.
+
+.. plot::
+    :include-source:
+
+    import numpy as np
+    import matplotlib.pyplot as plt
+    import astropy.units as u
+    from astropy.table import Table
+
+    from lightkurve import search_lightcurve
+
+    from gadfly import (
+        Hyperparameters, PowerSpectrum,
+        StellarOscillatorKernel, ShotNoiseKernel
+    )
+
+    fig, ax = plt.subplots(figsize=(9, 5.5))
+
+    # read a curated table of a few targets from Huber et al. (2011)
+    sequence = Table.read(
+        'data/huber2011_sample.ecsv', format='ascii.ecsv'
+    )[['KIC', 'mass', 'rad', 'teff', 'lum', 'cad_2']]
+
+    # create a frequency grid for PSD estimates:
+    freq = np.logspace(0, 3, int(1e3)) * u.uHz
+
+    for i, row in enumerate(sequence):
+        kic, mass, rad, temp, lum, cad = row
+        name = f'KIC {kic}'
+        hp = Hyperparameters.for_star(
+            mass * u.M_sun, rad * u.R_sun,
+            temp * u.K, lum * u.L_sun,
+            name=name, quiet=True
+        )
+
+        # download a portion of the Kepler light curve:
+        cadence_str = 'short' if cad == 0 else 'long'
+        light_curve = search_lightcurve(
+            name, mission='Kepler', quarter=range(6),
+            cadence=cadence_str
+        ).download_all()
+
+        kernel = (
+            # using scaling relations get stellar oscillations, granulation
+            StellarOscillatorKernel(hp) +
+            # add in a kernel for Kepler shot noise
+            ShotNoiseKernel.from_kepler_light_curve(light_curve)
+        )
+
+        # compute binned power spectrum from the light curve:
+        ps = PowerSpectrum.from_light_curve(
+            light_curve, name=name,
+            detrend_poly_order=3,
+        ).bin(50)
+
+        # adjust some plot settings:
+        kernel_kw = dict(color=f"C{i}", alpha=0.9)
+        obs_kw = dict(
+            color=f"C{i}", marker='o', lw=0, ms=6, mfc=None
+        )
+
+        kernel.plot(
+            ax=ax,
+            freq=freq,
+            label_kernel="",
+            obs=ps,
+            obs_kwargs=obs_kw,
+            kernel_kwargs=kernel_kw,
+            title=""
+        )
+
+    ax.set_xlim([5, 1000])
+    ax.set_ylim([0.5, 5e3])
+    fig.tight_layout()
+
+The frequency of the peak in the p-mode oscillations in Kepler observations
+(filled circles) is usually near to the frequency where the kernel expects
+the most power (curve). The shot noise kernel prediction captures the
+observed behavior at high frequencies, where white noise dominates. Some of
+the structures at low frequencies is also captured across the sequence
+of stellar properties.
+
+.. [1] These stars are chosen randomly from
+   `Huber et al. (2011) <https://ui.adsabs.harvard.edu/abs/2011ApJ...743..143H/abstract>`_.
+
