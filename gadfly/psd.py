@@ -46,6 +46,7 @@ def plot_power_spectrum(
     scaling_p_mode='semilogy',
     inset_xlim=[1800, 4500],
     inset_ylim=[0.005, 1.3],
+    inset_bounds=[0.5, 0.5, 0.47, 0.47],
     title=None,
     label_kernel=None,
     label_obs=None,
@@ -82,6 +83,7 @@ def plot_power_spectrum(
     obs_kwargs : dict
     inset_kwargs : dict
     create_new_figure : bool
+    inset_bounds : list
 
     Returns
     -------
@@ -109,7 +111,7 @@ def plot_power_spectrum(
     fig = plt.gcf()
 
     if p_mode_inset:
-        ax_inset = ax.inset_axes([0.5, 0.5, 0.47, 0.47])
+        ax_inset = ax.inset_axes(inset_bounds)
     else:
         ax_inset = None
 
@@ -187,7 +189,7 @@ def spectral_binning(y, all_x, all_y):
     return y[0]
 
 
-def spectral_binning_err(y, all_x, all_y, constant=5):
+def spectral_binning_err(y, all_x, all_y, constant=1):
     """
     Approximate uncertainties for spectral bins estimated
     from a solar/stellar power spectrum.

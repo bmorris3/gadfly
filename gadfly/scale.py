@@ -3,6 +3,7 @@ import warnings
 import numpy as np
 
 import astropy.units as u
+from astropy.modeling.models import Voigt1D
 from astropy.utils.exceptions import AstropyUserWarning
 
 
@@ -327,3 +328,63 @@ def granulation_amplitude(mass, temperature, luminosity):
             _solar_mass, _solar_temperature, _solar_luminosity
         )
     )
+
+
+@u.quantity_input(freq=u.uHz)
+def _v_osc_kiefer(freq):
+    """
+    Velocity spectral power from Kiefer et al. (2018) [1]_.
+
+    Parameters
+    ----------
+    freq : ~astropy.units.Quantity
+        Frequency (not angular)
+
+    References
+    ----------
+    .. [1] See Eqns 1-5 and the parameter estimates in Table 1 of `Kiefer et al. (2018)
+       <https://ui.adsabs.harvard.edu/abs/2018SoPh..293..151K/abstract>`_
+
+    """
+    nu_max = 3079.76 * u.uHz  # peak p-mode frequency
+    sigma = 181.8 * u.uHz  # stddev of Gaussian
+    gamma = 150.9 * u.uHz  # HWHM of Lorentzian
+    Sigma = 611.8 * u.uHz  # FWHM of Voigt
+    S = -0.100  # asymmetry parameter
+    a = 3299 * 1e4 * u.m**2 / u.s**2 / u.Hz  # height factor
+    b = -581 * u.m**2 / u.s**2 / u.Hz  # offset factor
+    A = 1 / np.pi * (np.arctan(S * (freq - nu_max) / Sigma).to(u.rad).value + 0.5)
+    voigt_profile = Voigt1D(x_0=nu_max, amplitude_L=a, fwhm_L=2*gamma, fwhm_G=2.355 * sigma)
+    return (A * (b + voigt_profile(freq)) * u.uHz).to(u.m**2/u.s**2).value
+
+
+@u.quantity_input(freq=u.uHz, wavelength=u.nm, temperature=u.K)
+def p_mode_intensity_kjeldsen_bedding(freq, wavelength=650 * u.nm, temperature=5777 * u.K):
+    """
+    Power spectrum intensity scaling for p-modes.
+
+    Computes the amplitudes of p-mode oscillations in the velocity
+    power spectrum from Kiefer et al. (2018) [1]_, and converts
+    the velocity power spectrum to an intensity estimate using
+    Kjeldsen & Bedding (1995) [1]_
+
+    Parameters
+    ----------
+    freq : ~astropy.units.Quantity
+        Frequency (not angular)
+    wavelength : ~astropy.units.Quantity
+        Wavelength of observations
+    temperature : ~astropy.units.Quantity
+        Effective temperature
+
+    References
+    ----------
+    .. [1] See Eqns 1-5 and the parameter estimates in Table 1 of `Kiefer et al. (2018)
+       <https://ui.adsabs.harvard.edu/abs/2018SoPh..293..151K/abstract>`_
+    .. [2] See Eqn 5 of `Kjeldsen & Bedding (1995)
+       <https://ui.adsabs.harvard.edu/abs/1995A%26A...293...87K/abstract>`_
+    """
+    return 20.1 * (_v_osc_kiefer(freq) /
+        (wavelength / (550 * u.nm)) /
+        (temperature / (5777 * u.K)) ** 2
+    ).decompose() * u.cds.ppm**2 / u.uHz
