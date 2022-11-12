@@ -43,6 +43,7 @@ default_alpha_table_path = os.path.join(
     dirname, 'data', 'estimate_alpha.json'
 )
 
+
 @u.quantity_input(temperature=u.K)
 def c_K(temperature):
     """
