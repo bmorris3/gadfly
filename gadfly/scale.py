@@ -1,3 +1,5 @@
+import os
+import json
 import warnings
 
 import numpy as np
@@ -36,6 +38,10 @@ _huber_r = 2
 _huber_s = 0.886
 _huber_t = 1.89
 
+dirname = os.path.dirname(os.path.abspath(__file__))
+default_alpha_table_path = os.path.join(
+    dirname, 'data', 'estimate_alpha.json'
+)
 
 @u.quantity_input(temperature=u.K)
 def c_K(temperature):
@@ -388,3 +394,44 @@ def p_mode_intensity_kjeldsen_bedding(freq, wavelength=650 * u.nm, temperature=5
         (wavelength / (550 * u.nm)) /
         (temperature / (5777 * u.K)) ** 2
     ).decompose() * u.cds.ppm**2 / u.uHz
+
+
+@u.quantity_input(temperature=u.K)
+def amplitude_with_wavelength(bandpass, temperature):
+    """
+    Scale power spectral feature amplitudes with wavelength and
+    stellar effective temperature, compared to their amplitudes
+    when observed with SOHO VIRGO/PMO6.
+
+    Follows the Taylor expansion argument in Sect 5.1 of
+    Morris et al. (2020), see Eqn 11 [1]_.
+
+    Returns
+    -------
+    alpha : float
+        Scaling for the amplitude of intensity features
+        relative to the SOHO VIRGO amplitudes
+
+    References
+    ----------
+    .. [1] `Morris et al. (2020)
+       <https://ui.adsabs.harvard.edu/abs/2020MNRAS.493.5489M/abstract>`_
+    """
+    # TODO: move this to a smarter caching system that only reads once
+    with open(default_alpha_table_path, 'r') as alpha_table_file:
+        _estimate_alpha_table = json.load(alpha_table_file)
+
+    bandpass_match = None
+    for avail in _estimate_alpha_table.keys():
+        if avail.lower() == bandpass.lower():
+            bandpass_match = avail
+
+    if bandpass_match is None:
+        raise ValueError(f"Bandpass given is {bandpass}, but must be "
+                         f"one of {list(_estimate_alpha_table.keys())}")
+
+    p = _estimate_alpha_table[bandpass_match]
+    alpha = p['$c_0$'] * np.exp(
+        p['$c_1$'] * (2000 - temperature.to(u.K).value) / 1000
+    ) + p['$c_2$']
+    return alpha

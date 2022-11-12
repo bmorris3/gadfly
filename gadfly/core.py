@@ -106,7 +106,8 @@ class Hyperparameters(list):
     @u.quantity_input(mass=u.g, temperature=u.K, radius=u.m, luminosity=u.L_sun)
     def for_star(
             cls, mass, radius, temperature, luminosity,
-            name=None, quiet=False, magnitude=None):
+            bandpass='Kepler', name=None, quiet=False, magnitude=None
+    ):
         """
         Applying scaling relations to the SOHO VIRGO/PMO6 total solar
         irradiance hyperparameters for given stellar properties.
@@ -121,6 +122,8 @@ class Hyperparameters(list):
             Effective temperature
         luminosity : ~astropy.units.Quantity
             Stellar luminosity
+        bandpass : str
+            Name of the observing bandpass. Default is "Kepler".
         name : str
             Name for the star or set of hyperparameters
         quiet : bool
@@ -143,9 +146,16 @@ class Hyperparameters(list):
             if is_fixed_Q:
                 params = item['hyperparameters']
 
-                # scale the granulation amplitudes
-                scale_S0 = params['S0'] * scale.granulation_amplitude(
-                    mass, temperature, luminosity
+                scale_S0 = (
+                    params['S0'] *
+                    # scale the amplitudes by a term for granulation:
+                    scale.granulation_amplitude(
+                        mass, temperature, luminosity
+                    ) *
+                    # also scale the amplitudes for the observing bandpass:
+                    scale.amplitude_with_wavelength(
+                        bandpass, temperature
+                    )
                 )
 
                 # scale the timescales:
@@ -177,10 +187,17 @@ class Hyperparameters(list):
             else:
                 params = item['hyperparameters']
 
-                # scale the p-mode amplitudes
                 scaled_S0 = (
-                    params['S0'] * scale_factors['p_mode_amps'] * scale.granulation_amplitude(
+                    params['S0'] *
+                    # scale each of the p-mode amplitudes:
+                    scale_factors['p_mode_amps'] *
+                    # also scale by the granulation amplitude:
+                    scale.granulation_amplitude(
                         mass, temperature, luminosity
+                    ) *
+                    # and also scale the amplitudes for the observing bandpass:
+                    scale.amplitude_with_wavelength(
+                        bandpass, temperature
                     )
                 )
 
@@ -273,7 +290,7 @@ class StellarOscillatorKernel(celerite2_terms.TermSum):
 
     def __add__(self, other):
         """
-        Assumes ``other`` is a SHOTerm or subclass. Adds that kernel to the
+        Assumes ``other`` is a SHOTerm or subclass.
         """
         if not isinstance(other, list):
             other_names = [other.name]
