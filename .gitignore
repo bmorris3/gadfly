@@ -63,5 +63,3 @@ pip-wheel-metadata/
 # Mac OSX
 .DS_Store
 
-# logo stuff
-docs/assets/logo.svg
