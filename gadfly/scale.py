@@ -7,6 +7,7 @@ import numpy as np
 import astropy.units as u
 from astropy.modeling.models import Voigt1D
 from astropy.utils.exceptions import AstropyUserWarning
+from astropy.modeling.models import BlackBody
 
 
 __all__ = [
@@ -398,7 +399,7 @@ def p_mode_intensity_kjeldsen_bedding(freq, wavelength=650 * u.nm, temperature=5
 
 
 @u.quantity_input(temperature=u.K)
-def amplitude_with_wavelength(bandpass, temperature):
+def amplitude_with_wavelength(filter_name, temperature, n_wavelengths=1000, **kwargs):
     """
     Scale power spectral feature amplitudes with wavelength and
     stellar effective temperature, compared to their amplitudes
@@ -418,21 +419,59 @@ def amplitude_with_wavelength(bandpass, temperature):
     .. [1] `Morris et al. (2020)
        <https://ui.adsabs.harvard.edu/abs/2020MNRAS.493.5489M/abstract>`_
     """
-    # TODO: move this to a smarter caching system that only reads once
-    with open(default_alpha_table_path, 'r') as alpha_table_file:
-        _estimate_alpha_table = json.load(alpha_table_file)
+    from tynt import FilterGenerator, Filter
 
-    bandpass_match = None
-    for avail in _estimate_alpha_table.keys():
-        if avail.lower() == bandpass.lower():
-            bandpass_match = avail
+    wavelength = np.logspace(-1, 1, n_wavelengths) * u.um
+    f = FilterGenerator()
 
-    if bandpass_match is None:
-        raise ValueError(f"Bandpass given is {bandpass}, but must be "
-                         f"one of {list(_estimate_alpha_table.keys())}")
+    filters = dict()
 
-    p = _estimate_alpha_table[bandpass_match]
-    alpha = p['$c_0$'] * np.exp(
-        p['$c_1$'] * (2000 - temperature.to(u.K).value) / 1000
-    ) + p['$c_2$']
-    return alpha
+    # SOHO VIRGO filter profile described here:
+    # https://adsabs.harvard.edu/full/1995ASPC...76..408A
+    # The SOHO VIRGO PMO6 radiometer measures *bolometric* fluxes:
+    filters['SOHO VIRGO'] = Filter(wavelength.copy(), np.ones_like(wavelength))
+
+    if filter_name != 'SOHO VIRGO':
+        try:
+            filters[filter_name] = f.download_true_transmittance(filter_name, **kwargs)
+        except KeyError:
+            raise ValueError(f"Filter name {filter_name} not available via the `tynt` package.")
+
+    # Following Morris+ 2020, eqn 11:
+    dT = np.atleast_2d([-10, 10]).T * u.K
+    temperatures = dT + temperature
+
+    I_nu = BlackBody(temperature)(wavelength)
+    dI_dT = np.diff(BlackBody(temperatures)(wavelength), axis=0)[0] / dT.ptp()
+
+    f0, f1 = "SOHO VIRGO", filter_name
+    filt0_transmittance = np.interp(
+        wavelength.to(u.um).value,
+        filters[f0].wavelength.to(u.um).value,
+        filters[f0].transmittance,
+        left=0, right=0
+    )
+    filt0_transmittance = filt0_transmittance / np.trapz(filt0_transmittance, wavelength)
+    filt1_transmittance = np.interp(
+        wavelength.to(u.um).value,
+        filters[f1].wavelength.to(u.um).value,
+        filters[f1].transmittance,
+        left=0, right=0
+    )
+    filt1_transmittance = (
+        filt1_transmittance / np.trapz(filt1_transmittance, wavelength.to(u.um).value)
+    )
+
+    ratio_0 = (
+        np.trapz(dI_dT * wavelength.to(u.um).value * filt1_transmittance,
+                 wavelength.to(u.um).value) /
+        np.trapz(dI_dT * wavelength.to(u.um).value * filt0_transmittance,
+                 wavelength.to(u.um).value)
+    )
+    ratio_1 = (
+        np.trapz(I_nu * wavelength.to(u.um).value * filt0_transmittance,
+                 wavelength.to(u.um).value) /
+        np.trapz(I_nu * wavelength.to(u.um).value * filt1_transmittance,
+                 wavelength.to(u.um).value)
+    )
+    return ratio_0 * ratio_1

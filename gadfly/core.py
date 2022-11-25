@@ -106,7 +106,7 @@ class Hyperparameters(list):
     @u.quantity_input(mass=u.g, temperature=u.K, radius=u.m, luminosity=u.L_sun)
     def for_star(
             cls, mass, radius, temperature, luminosity,
-            bandpass='Kepler', name=None, quiet=False, magnitude=None
+            bandpass='Kepler/Kepler.K', name=None, quiet=False, magnitude=None
     ):
         """
         Applying scaling relations to the SOHO VIRGO/PMO6 total solar

@@ -11,7 +11,8 @@ from ..core import Hyperparameters, SolarOscillatorKernel
 from ..gp import GaussianProcess
 from ..psd import PowerSpectrum
 from ..scale import (
-    fwhm, _solar_mass, _solar_temperature, _solar_radius, _solar_luminosity
+    fwhm, _solar_mass, _solar_temperature,
+    _solar_radius, _solar_luminosity, amplitude_with_wavelength
 )
 
 
@@ -59,6 +60,13 @@ def test_scaling_relations_to_solar():
     # now compute scale factors and ensure they're all unity
     should_be_ones = np.array(list(params.scale_factors.values()))
     np.testing.assert_allclose(np.ones_like(should_be_ones), should_be_ones)
+
+
+def test_scale_amp_with_wavelength():
+    assert amplitude_with_wavelength('SOHO VIRGO', _solar_temperature) == 1
+    np.testing.assert_allclose(
+        amplitude_with_wavelength('Kepler/Kepler.K', _solar_temperature), 2.4324605258
+    )
 
 
 def test_process_inputs():

@@ -10,3 +10,4 @@ dependencies:
     - PyYAML
     - scipy
     - lightkurve
+    - tynt
