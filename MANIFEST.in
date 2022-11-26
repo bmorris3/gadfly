@@ -15,4 +15,7 @@ prune build
 prune docs/_build
 prune docs/api
 
+exclude docs/assets/*.ico
+exclude docs/assets/*.png
+
 global-exclude *.pyc *.o

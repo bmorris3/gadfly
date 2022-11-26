@@ -21,7 +21,7 @@ def test_ps_lc_round_trip(n_trials=10, bin=15):
     np.random.seed(42)
     power_units = u.cds.ppm ** 2 / u.uHz
 
-    kernel = SolarOscillatorKernel()
+    kernel = SolarOscillatorKernel(texp=1 * u.min)
 
     t = np.linspace(0, 100, int(1e5)) * u.d
 
@@ -65,7 +65,7 @@ def test_scaling_relations_to_solar():
 def test_scale_amp_with_wavelength():
     assert amplitude_with_wavelength('SOHO VIRGO', _solar_temperature) == 1
     np.testing.assert_allclose(
-        amplitude_with_wavelength('Kepler/Kepler.K', _solar_temperature), 2.4324605258
+        amplitude_with_wavelength('Kepler/Kepler.K', _solar_temperature), 2.423981, rtol=1e-3
     )
 
 

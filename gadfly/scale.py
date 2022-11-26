@@ -432,7 +432,7 @@ def amplitude_with_wavelength(filter_name, temperature, n_wavelengths=1000, **kw
 
     if filter_name != 'SOHO VIRGO':
         try:
-            filters[filter_name] = f.download_true_transmittance(filter_name, **kwargs)
+            filters[filter_name] = f.reconstruct(filter_name, **kwargs)
         except KeyError:
             raise ValueError(f"Filter name {filter_name} not available via the `tynt` package.")
 
@@ -473,4 +473,4 @@ def amplitude_with_wavelength(filter_name, temperature, n_wavelengths=1000, **kw
         np.trapz(I_nu * wavelength.to(u.um).value * filt1_transmittance,
                  wavelength.to(u.um).value)
     )
-    return ratio_0 * ratio_1
+    return (ratio_0 * ratio_1).to(u.dimensionless_unscaled).value
