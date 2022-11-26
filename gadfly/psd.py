@@ -352,7 +352,26 @@ class PowerSpectrum:
     """
 
     @u.quantity_input(frequency=u.uHz, power=ppm**2/u.uHz)
-    def __init__(self, frequency, power, error=None, name=None, norm=None, detrended_lc=None):
+    def __init__(
+            self, frequency, power, error=None,
+            name=None, norm=None, detrended_lc=None
+    ):
+        """
+        Parameters
+        ----------
+        frequency : ~astropy.units.Quantity
+            Frequency of each power spectral density measurement
+        power : ~astropy.units.Quantity
+            Power spectral density at each frequency
+        error : ~astropy.units.Quantity
+            Uncertainty on PSD measurements
+        name : str
+            Name of the target/instrument
+        norm : ~astropy.units.Quantity
+            Normalization factor
+        detrended_lc : ~lightkurve.LightCurve
+            Detrended light curve to cache along with the PSD.
+        """
         self.frequency = frequency
         self.power = power
         self.error = error
@@ -423,8 +442,12 @@ class PowerSpectrum:
         name : str
             Name for the power spectrum
         detrend : bool
+            If ``True``, detrend the light curve.
         detrend_poly_order : int
+            Polynomial order used for detrending the light curve
         save_detrended_lc : bool
+            If ``True``, save the detrended light curve in an
+            attribute on the PSD object.
         """
         from lightkurve import LightCurve, LightCurveCollection
 

@@ -12,7 +12,8 @@ from astropy.modeling.models import BlackBody
 __all__ = [
     'p_mode_amplitudes', 'delta_nu', 'nu_max',
     'tau_eff', 'fwhm', 'tau_gran',
-    'granulation_amplitude', 'c_K'
+    'granulation_amplitude', 'c_K',
+    'amplitude_with_wavelength'
 ]
 
 # Solar parameters
@@ -406,6 +407,13 @@ def amplitude_with_wavelength(filter_name, temperature, n_wavelengths=1000, **kw
 
     Follows the Taylor expansion argument in Sect 5.1 of
     Morris et al. (2020), see Eqn 11 [1]_.
+
+    Makes use of the ``tynt`` package to retrieve filter transmittance
+    curves. To see available filters via ``tynt``, run:
+
+    >>> from tynt import FilterGenerator
+    >>> f = FilterGenerator()
+    >>> print(f.available_filters())  # doctest: +SKIP
 
     Returns
     -------

@@ -63,7 +63,8 @@ intersphinx_mapping = {
     'celerite2': ('https://celerite2.readthedocs.io/en/latest/', None),
     'astropy': ('https://docs.astropy.org/en/stable/', None),
     'lightkurve': ('https://docs.lightkurve.org/', None),
-    'matplotlib': ('http://matplotlib.org/stable', None)
+    'matplotlib': ('http://matplotlib.org/stable', None),
+    'tynt': ('https://tynt.readthedocs.io/en/latest/', None)
 }
 
 # -- Options for HTML output -------------------------------------------------
@@ -77,6 +78,14 @@ html_theme = 'sphinx_book_theme'
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_logo = "assets/logo.png"
 html_favicon = "assets/logo.ico"
+
+html_theme_options = {
+    "logo_only": True,
+    "use_download_button": True,
+    "repository_url": "https://github.com/bmorris3/gadfly",
+    "repository_branch": "master",
+    "path_to_docs": "docs",
+}
 
 numpydoc_show_class_members = False
 autodoc_inherit_docstrings = True

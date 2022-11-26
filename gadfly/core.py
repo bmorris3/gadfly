@@ -37,8 +37,8 @@ class Hyperparameters(list):
         ----------
         hyperparameters : list of dict
             List of dictionaries containing hyperparameters. Each dict has two entries.
-            `"hyperparameters"` contains a dictionary with the keyword arguments that
-            must be passed to the celerite2 SHOTerm constructor. `"metadata"` is a
+            ``"hyperparameters"`` contains a dictionary with the keyword arguments that
+            must be passed to the celerite2 SHOTerm constructor. ``"metadata"`` is a
             dictionary describing which hyperparameters were fixed in the fit.
         scale_factors : dict or None
             Scaling relation scale-factors to apply to solar hyperparameters.
@@ -363,10 +363,24 @@ class ShotNoiseKernel(celerite2_terms.SHOTerm):
     shot noise in Kepler observations, for example.
     """
 
-    w0 = 1e10  # in [uHz]. This is intentionally really large.
-    Q = 0.5  # value does not matter much if w0 >>> 1
+    # This is intentionally really large. In [uHz].
+    w0 = 1e10
+
+    # value does not matter much if w0 >>> 1
+    Q = 0.5
 
     def __init__(self, *args, name=None, **kwargs):
+        """
+        Parameters
+        ----------
+        args : dict
+            Hyperparameters for the SHO kernel, :math:`S_0, \\omega_0, Q`.
+        name : str
+            Name to store for the target/instrument.
+        kwargs : dict
+            Extra keyword arguments to pass to the
+            :py:class:`~celerite2.terms.SHOTerm` constructor.
+        """
         if name is None:
             name = "Shot noise"
         self.name = name

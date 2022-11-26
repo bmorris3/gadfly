@@ -50,7 +50,7 @@ with these hyperparameters.
     )
 
     # generate a celerite2-compatible kernel
-    kernel = StellarOscillatorKernel(hp)
+    kernel = StellarOscillatorKernel(hp, texp=1 * u.min)
 
 Next we can download one quarter of Kepler observations like so:
 
@@ -135,7 +135,7 @@ To plot them, we'll take advantage of a few features in :py:mod:`~astropy.visual
     )
 
     # generate a celerite2-compatible kernel
-    kernel = StellarOscillatorKernel(hp)
+    kernel = StellarOscillatorKernel(hp, texp=1 * u.min)
 
     # Download a quarter of Kepler observations
     lc = search_lightcurve(
@@ -252,7 +252,7 @@ domain:
     )
 
     # generate a celerite2-compatible kernel
-    kernel = StellarOscillatorKernel(hp)
+    kernel = StellarOscillatorKernel(hp, texp=1 * u.min)
 
     # Download a quarter of Kepler observations
     lc = search_lightcurve(
@@ -320,7 +320,7 @@ try it:
     )
 
     # reproduces the solar granulation and p-mode power spectrum:
-    kernel = SolarOscillatorKernel()
+    kernel = SolarOscillatorKernel(texp=1 * u.min)
 
     # we'll synthesize a light curve at these times:
     t = np.linspace(0, 100, int(1e5)) * u.d

@@ -24,8 +24,8 @@ class GaussianProcess(CeleriteGaussianProcess):
         Parameters
         ----------
         kernel : Subclass of :py:class:`~celerite2.terms.Term`
-            ``celerite2``-compatible kernel. Could be a :py:class:`SolarOscillatorKernel`
-            or :py:class:`StellarOscillatorKernel`, for example.
+            ``celerite2``-compatible kernel. Could be a :py:class:`~gadfly.SolarOscillatorKernel`
+            or :py:class:`~gadfly.StellarOscillatorKernel`, for example.
         t : ~astropy.units.Quantity or ~astropy.time.Time
         mean : float or callable
             The mean function of the process. This can either
@@ -35,7 +35,7 @@ class GaussianProcess(CeleriteGaussianProcess):
             The light curve on which predictions will be computed
         kwargs : dict
             Other arguments will be passed directly to
-            py:meth:`~gadfly.GaussianProcess.compute` if the argument ``t`` is
+            :py:meth:`~gadfly.GaussianProcess.compute` if the argument ``t`` is
             specified.
         """
         self._original_flux_median = None
@@ -210,7 +210,7 @@ class GaussianProcess(CeleriteGaussianProcess):
             Times
         include_mean : bool
             Include the mean model in the prediction
-        kernel : subclass of ~celerite2.terms.Term
+        kernel : subclass of :py:class:`~celerite2.terms.Term`
             Evaluate conditional distribution given this kernel
         return_quantity : bool
             Return the fluxes as a :py:class:`~astropy.units.Quantity` in the same units as

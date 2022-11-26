@@ -29,6 +29,7 @@ observed power spectra.
 
     from gadfly import SolarOscillatorKernel, PowerSpectrum
     from gadfly.sun import download_soho_virgo_time_series
+    import astropy.units as u
 
     # Download a year of the total solar irradiance observations
     # from SOHO VIRGO PMO6:
@@ -40,8 +41,8 @@ observed power spectra.
     ps = PowerSpectrum.from_light_curve(light_curve)
 
     # Generate a celerite2 kernel that approximates the solar
-    # power spectrum
-    kernel = SolarOscillatorKernel()
+    # power spectrum with one-minute cadence
+    kernel = SolarOscillatorKernel(texp=1 * u.min)
 
     # Plot the kernel's PSD, and the observed (binned) solar PSD:
     fig, ax = kernel.plot(
@@ -134,7 +135,7 @@ generalization of the :py:class:`~gadfly.SolarOscillatorKernel`.
         )
 
         # Assemble a celerite2-compatible kernel for the star:
-        kernel = StellarOscillatorKernel(hp)
+        kernel = StellarOscillatorKernel(hp, texp=1 * u.min)
 
         # Plot the kernel's PSD:
         kernel.plot(
@@ -174,7 +175,7 @@ generalization of the :py:class:`~gadfly.SolarOscillatorKernel`.
         )
 
         # Assemble a celerite2-compatible kernel for the star:
-        kernel = StellarOscillatorKernel(hp)
+        kernel = StellarOscillatorKernel(hp, texp=1 * u.min)
 
         # Plot the kernel's PSD:
         kernel.plot(

@@ -34,6 +34,7 @@ Let's compare the power spectra of a Kepler target computed with each method:
 .. plot::
     :include-source:
 
+    import warnings
     import numpy as np
     import matplotlib.pyplot as plt
     import astropy.units as u
@@ -51,9 +52,13 @@ Let's compare the power spectra of a Kepler target computed with each method:
     ps_fft = PowerSpectrum.from_light_curve(
         light_curve, method='fft', name='FFT'
     )
-    ps_ls = PowerSpectrum.from_light_curve(
-        light_curve, method='lomb-scargle', name='L-S'
-    )
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+
+        ps_ls = PowerSpectrum.from_light_curve(
+            light_curve, method='lomb-scargle', name='L-S'
+        )
 
     ps_fft.bin(200).plot()
     ps_ls.bin(200).plot(title='')

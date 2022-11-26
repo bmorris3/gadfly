@@ -97,7 +97,7 @@ Now we'll call a big loop to do most of the work:
         )
 
         # Assemble a celerite2-compatible kernel for the star:
-        kernel = StellarOscillatorKernel(hp)
+        kernel = StellarOscillatorKernel(hp, texp=1 * u.min)
 
         # Get the full Kepler light curve for the target:
         target_name = f'KIC {kic}'
@@ -175,7 +175,7 @@ Ok, let's see the output:
         )
 
         # Assemble a celerite2-compatible kernel for the star:
-        kernel = StellarOscillatorKernel(hp)
+        kernel = StellarOscillatorKernel(hp, texp=1 * u.min)
 
         # Get the full Kepler light curve for the target:
         target_name = f'KIC {kic}'
@@ -258,7 +258,7 @@ kernel:
 
         kernel = (
             # kernel for scaled stellar oscillations and granulation
-            StellarOscillatorKernel(hp) +
+            StellarOscillatorKernel(hp, texp=1 * u.min) +
 
             # add in a kernel for Kepler shot noise
             ShotNoiseKernel.from_kepler_light_curve(light_curve)
@@ -311,7 +311,7 @@ to see the code that generates this plot):
 
         kernel = (
             # kernel for scaled stellar oscillations and granulation
-            StellarOscillatorKernel(hp) +
+            StellarOscillatorKernel(hp, texp=1 * u.min) +
 
             # add in a kernel for Kepler shot noise
             ShotNoiseKernel.from_kepler_light_curve(light_curve)
@@ -398,7 +398,7 @@ Kepler would observe for each target.
 
         kernel = (
             # using scaling relations get stellar oscillations, granulation
-            StellarOscillatorKernel(hp) +
+            StellarOscillatorKernel(hp, texp=1 * u.min) +
             # add in a kernel for Kepler shot noise
             ShotNoiseKernel.from_kepler_light_curve(light_curve)
         )
