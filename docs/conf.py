@@ -83,7 +83,7 @@ html_theme_options = {
     "logo_only": True,
     "use_download_button": True,
     "repository_url": "https://github.com/bmorris3/gadfly",
-    "repository_branch": "master",
+    "repository_branch": "main",
     "path_to_docs": "docs",
 }
 
@@ -94,7 +94,7 @@ html_context = {
     "display_github": True,
     "github_user": "bmorris3",
     "github_repo": "gadfly",
-    "github_version": "master",
+    "github_version": "main",
     "conf_py_path": "docs/",
 }
 
