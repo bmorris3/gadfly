@@ -1,9 +1,7 @@
-import pytest
 import numpy as np
 
 import astropy.units as u
 from astropy.units import cds  # noqa
-from astropy.utils.exceptions import AstropyUserWarning
 
 from lightkurve import LightCurve
 
@@ -11,7 +9,7 @@ from ..core import Hyperparameters, SolarOscillatorKernel
 from ..gp import GaussianProcess
 from ..psd import PowerSpectrum
 from ..scale import (
-    fwhm, _solar_mass, _solar_temperature,
+    _solar_mass, _solar_temperature,
     _solar_radius, _solar_luminosity, amplitude_with_wavelength
 )
 
@@ -70,4 +68,3 @@ def test_scale_amp_with_wavelength():
     np.testing.assert_allclose(
         kepler_amp, 2.795, rtol=1e-3
     )
-
