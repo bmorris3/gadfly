@@ -475,7 +475,7 @@ class PowerSpectrum:
                     t, f = interpolate_missing_data(lc.time.jd, lc.flux.value)
                 else:
                     t, f = lc.time.jd, lc.flux.value
-                e = np.median(lc.flux_err) * np.ones_like(f)
+                e = np.median(lc.flux_err.value) * np.ones_like(f)
 
                 # if the light curve is not given in units combatible with ppm,
                 # normalize it with a polynomial, center it at zero
