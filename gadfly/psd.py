@@ -493,7 +493,7 @@ class PowerSpectrum:
                     time=t,
                     # convert detrended flux to ppm with zero-mean:
                     flux=flux_ppm,
-                    flux_err=e.value
+                    flux_err=e
                 )
                 lcs_interped.append(lc_int)
 
