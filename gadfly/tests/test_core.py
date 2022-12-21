@@ -54,7 +54,9 @@ def test_ps_lc_round_trip(n_trials=10, bin=15):
 def test_scaling_relations_to_solar():
     # initialize a "star" with exactly solar parameters:
     params = Hyperparameters.for_star(
-        _solar_mass, _solar_radius, _solar_temperature, _solar_luminosity
+        _solar_mass, _solar_radius,
+        _solar_temperature, _solar_luminosity,
+        bandpass='Kepler/Kepler.K'
     )
 
     # now compute scale factors and ensure they're all unity
@@ -64,12 +66,8 @@ def test_scaling_relations_to_solar():
 
 def test_scale_amp_with_wavelength():
     assert amplitude_with_wavelength('SOHO VIRGO', _solar_temperature) == 1
+    kepler_amp = amplitude_with_wavelength('Kepler/Kepler.K', _solar_temperature)
     np.testing.assert_allclose(
-        amplitude_with_wavelength('Kepler/Kepler.K', _solar_temperature), 2.423981, rtol=1e-3
+        kepler_amp, 2.795, rtol=1e-3
     )
 
-
-def test_process_inputs():
-    with pytest.warns(AstropyUserWarning):
-        # warns when temperature < 4900 K
-        fwhm(3500*u.K)

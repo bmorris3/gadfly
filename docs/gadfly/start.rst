@@ -69,7 +69,7 @@ many simple harmonic oscillator kernels.
 .. [2] `Fröhlich et al. (1997) <https://doi.org/10.1023/A:1004969622753>`_.
    See description of their Figure 2 in Section 2.
 .. [3] The kernels provided by ``gadfly`` are subclasses of the
-   :py:class:`~celerite2.terms.TermSum` object in ``celerite2``.
+   :py:class:`~celerite2.terms.TermConvolution` object in ``celerite2``.
 .. [4] We did not need to explicitly supply the :py:class:`~gadfly.Hyperparameters` for the
    solar example because the :py:class:`~gadfly.SolarOscillatorKernel` class assumes the
    solar hyperparameters. This assumption is relaxed in the next subsection.

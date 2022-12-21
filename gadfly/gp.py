@@ -382,7 +382,7 @@ class GaussianProcess(CeleriteGaussianProcess):
             the input light curve.
         """
         result = super().sample(size=size, include_mean=include_mean)
-        result -= result.mean()
+        result -= result.mean(axis=0 if result.ndim == 2 else None)
         if return_quantity:
             return self._ppm_to_flux(result)
         return result

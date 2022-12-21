@@ -25,6 +25,7 @@ _solar_luminosity = 1 * u.L_sun
 # Huber et al. (2011)
 # https://ui.adsabs.harvard.edu/abs/2011ApJ...743..143H/abstract
 _solar_nu_max = 3090 * u.uHz
+_solar_delta_nu = 135.1 * u.uHz
 
 # Bahng & Schwarzschild (1961)
 # https://ui.adsabs.harvard.edu/abs/1961ApJ...134..312B/abstract
@@ -181,7 +182,7 @@ def tau_eff(nu_max):
     )
 
 
-def _fwhm(temperature):
+def _fwhm_corsaro(temperature):
     temperature_kelvin = temperature.to(u.K).value
     return np.exp(
         1463.49 -
@@ -193,7 +194,7 @@ def _fwhm(temperature):
 
 
 @u.quantity_input(temperature=u.K)
-def fwhm(temperature, quiet=False):
+def _fwhm_deprecated(temperature, quiet=False):
     """
     Scale the FWHM of p-mode oscillation peaks in power.
 
@@ -229,7 +230,66 @@ def fwhm(temperature, quiet=False):
         temperature = 4900 * u.K
 
     return float(
-        _fwhm(_solar_temperature) / _fwhm(temperature)
+        _fwhm_corsaro(_solar_temperature) / _fwhm_corsaro(temperature)
+    )
+
+
+def _fwhm_lund(nu, nu_max):
+    # parameter pairs correspond to columns "b" and "a" in Table 4
+    # of Lund 2017
+    def f(param):
+        # apply linear fit for parameter value as function
+        # of temperature
+        b, a = param
+        return b + a * (nu_max / 3090)
+
+    alpha = f([2.95, 0.39])
+    Gamma_alpha = f([3.08, 3.32])
+    # we'll clip the `Delta_Gamma_dip` parameter to have a hard minimum:
+    Delta_Gamma_dip = np.clip(
+        f([-0.47, 0.62]), 1e-10, None
+    )
+    W_dip = f([4637, -141])
+    nu_dip = f([2984, 60])
+
+    return np.exp(
+        # power law trend:
+        alpha * np.log(nu / nu_max) + np.log(Gamma_alpha) +
+        # Lorentzian dip:
+        np.log(Delta_Gamma_dip) /
+        (1 + (2 * np.log(nu / nu_dip) / np.log(W_dip / nu_max))**2)
+    )
+
+
+@u.quantity_input(temperature=u.K)
+def fwhm(nu, nu_max, nu_solar):
+    """
+    Scale the FWHM of p-mode oscillation peaks in power.
+
+    Gets the FWHM scaling as a function of effective temperature
+    shown in Figure 20 of Lund et al. (2017) [1]_, and the
+    scaling with frequency described by Eqn 30 of the same paper.
+
+    Parameters
+    ----------
+    temperature : ~astropy.units.Quantity
+        Stellar temperature
+    nu : ~astropy.units.Quantity
+        Frequency of the mode after re-scaling. A scaling of mode
+        width as a function of frequency is applied.
+    nu_max : ~astropy.units.Quantity
+        Frequency of the maximum p-mode oscillations.
+    nu_solar : ~astropy.units.Quantity
+        Frequency of the mode for the Sun (before re-scaling).
+
+    References
+    ----------
+    .. [1] `Lund et al. (2017)
+       <https://ui.adsabs.harvard.edu/abs/2017ApJ...835..172L/abstract>`_
+    """
+    return (
+        _fwhm_lund(nu, nu_max) /
+        _fwhm_lund(nu_solar, _solar_nu_max.to(u.uHz).value)
     )
 
 
@@ -399,7 +459,7 @@ def p_mode_intensity_kjeldsen_bedding(freq, wavelength=650 * u.nm, temperature=5
 
 
 @u.quantity_input(temperature=u.K)
-def amplitude_with_wavelength(filter_name, temperature, n_wavelengths=1000, **kwargs):
+def amplitude_with_wavelength(filter, temperature, n_wavelengths=10_000, **kwargs):
     """
     Scale power spectral feature amplitudes with wavelength and
     stellar effective temperature, compared to their amplitudes
@@ -415,6 +475,19 @@ def amplitude_with_wavelength(filter_name, temperature, n_wavelengths=1000, **kw
     >>> f = FilterGenerator()
     >>> print(f.available_filters())  # doctest: +SKIP
 
+    Parameters
+    ----------
+    filter : str or ~tynt.Filter
+        Either the SVO FPS name for a filter bandpass available
+        via the ``tynt`` package, or an instance of the
+        :py:class:`~tynt.Filter` object itself.
+    temperature : ~astropy.units.Quantity
+        Stellar effective temperature
+    n_wavelengths : int
+        Number of wavelengths included in the calculation.
+    **kwargs : dict
+        Passed on to :py:meth:`~tynt.FilterGenerator.reconstruct`.
+
     Returns
     -------
     alpha : float
@@ -427,22 +500,26 @@ def amplitude_with_wavelength(filter_name, temperature, n_wavelengths=1000, **kw
        <https://ui.adsabs.harvard.edu/abs/2020MNRAS.493.5489M/abstract>`_
     """
     from tynt import FilterGenerator, Filter
+    wavelength = np.logspace(-1.5, 1.5, n_wavelengths) * u.um
 
-    wavelength = np.logspace(-1, 1, n_wavelengths) * u.um
     f = FilterGenerator()
 
-    filters = dict()
+    if filter != 'SOHO VIRGO' and filter in f.available_filters():
+        # reset the filter
+        selected_filter = f.reconstruct(filter, **kwargs)
+    elif isinstance(filter, Filter):
+        selected_filter = filter
+    elif filter == 'SOHO VIRGO':
+        # just in case you don't want to transform amplitudes with wavelength,
+        # this will have no effect.
 
-    # SOHO VIRGO filter profile described here:
-    # https://adsabs.harvard.edu/full/1995ASPC...76..408A
-    # The SOHO VIRGO PMO6 radiometer measures *bolometric* fluxes:
-    filters['SOHO VIRGO'] = Filter(wavelength.copy(), np.ones_like(wavelength))
-
-    if filter_name != 'SOHO VIRGO':
-        try:
-            filters[filter_name] = f.reconstruct(filter_name, **kwargs)
-        except KeyError:
-            raise ValueError(f"Filter name {filter_name} not available via the `tynt` package.")
+        # SOHO VIRGO "filter profile" described here:
+        # https://adsabs.harvard.edu/full/1995ASPC...76..408A
+        # The SOHO VIRGO PMO6 radiometer measures *bolometric* fluxes:
+        selected_filter = Filter(wavelength, np.ones_like(wavelength.value))
+    else:
+        raise ValueError(f"filter must be available via the ``tynt`` package or "
+                         f"be an instance of the tynt Filter object, but got: {filter}")
 
     # Following Morris+ 2020, eqn 11:
     dT = np.atleast_2d([-10, 10]).T * u.K
@@ -451,34 +528,26 @@ def amplitude_with_wavelength(filter_name, temperature, n_wavelengths=1000, **kw
     I_nu = BlackBody(temperature)(wavelength)
     dI_dT = np.diff(BlackBody(temperatures)(wavelength), axis=0)[0] / dT.ptp()
 
-    f0, f1 = "SOHO VIRGO", filter_name
-    filt0_transmittance = np.interp(
-        wavelength.to(u.um).value,
-        filters[f0].wavelength.to(u.um).value,
-        filters[f0].transmittance,
-        left=0, right=0
-    )
-    filt0_transmittance = filt0_transmittance / np.trapz(filt0_transmittance, wavelength)
+    wl_micron = wavelength.to(u.um).value
+    filt0_transmittance = np.ones_like(wl_micron)
     filt1_transmittance = np.interp(
-        wavelength.to(u.um).value,
-        filters[f1].wavelength.to(u.um).value,
-        filters[f1].transmittance,
-        left=0, right=0
-    )
-    filt1_transmittance = (
-        filt1_transmittance / np.trapz(filt1_transmittance, wavelength.to(u.um).value)
+        wl_micron,
+        selected_filter.wavelength.to(u.um).value,
+        selected_filter.transmittance,
+        left=0,
+        right=0
     )
 
     ratio_0 = (
-        np.trapz(dI_dT * wavelength.to(u.um).value * filt1_transmittance,
-                 wavelength.to(u.um).value) /
-        np.trapz(dI_dT * wavelength.to(u.um).value * filt0_transmittance,
-                 wavelength.to(u.um).value)
+        np.trapz(dI_dT * wl_micron * filt1_transmittance,
+                 wl_micron) /
+        np.trapz(dI_dT * wl_micron * filt0_transmittance,
+                 wl_micron)
     )
     ratio_1 = (
-        np.trapz(I_nu * wavelength.to(u.um).value * filt0_transmittance,
-                 wavelength.to(u.um).value) /
-        np.trapz(I_nu * wavelength.to(u.um).value * filt1_transmittance,
-                 wavelength.to(u.um).value)
+        np.trapz(I_nu * wl_micron * filt0_transmittance,
+                 wl_micron) /
+        np.trapz(I_nu * wl_micron * filt1_transmittance,
+                 wl_micron)
     )
     return (ratio_0 * ratio_1).to(u.dimensionless_unscaled).value

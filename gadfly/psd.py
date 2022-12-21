@@ -409,7 +409,8 @@ class PowerSpectrum:
         """
         Bin the power spectrum.
 
-        Requires scipy.
+        Requires scipy. Other keyword arguments passed to
+        :py:func:`~gadfly.psd.bin_power_spectrum`.
 
         Parameters
         ----------
@@ -508,7 +509,7 @@ class PowerSpectrum:
             else:
                 t, f = slc.time.jd, slc.flux.value
 
-            d = (t[1] - t[0]) * u.d
+            d = np.median(np.diff(t)) * u.day
             flux = f.copy() * ppm
             time = t.copy() * u.day
             name = light_curve[0].meta.get('name', name)
@@ -516,7 +517,7 @@ class PowerSpectrum:
             if isinstance(light_curve, LightCurveCollection):
                 light_curve = light_curve.stitch(lambda x: x)
 
-            d = (light_curve.time[1] - light_curve.time[0]).to(u.d)
+            d = np.median(np.diff(light_curve.time)).to(u.d)
             time = light_curve.time.jd * u.day
             flux = light_curve.flux
             name = light_curve.meta.get('name', name)

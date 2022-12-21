@@ -99,14 +99,13 @@ class Hyperparameters(list):
             p_mode_amps=scale.p_mode_amplitudes(mass, temperature, luminosity),
             nu_max=scale.nu_max(mass, temperature, radius),
             delta_nu=scale.delta_nu(mass, radius),
-            fwhm=scale.fwhm(temperature, quiet=quiet)
         )
 
     @classmethod
     @u.quantity_input(mass=u.g, temperature=u.K, radius=u.m, luminosity=u.L_sun)
     def for_star(
             cls, mass, radius, temperature, luminosity,
-            bandpass='Kepler/Kepler.K', name=None, quiet=False, magnitude=None
+            bandpass=None, name=None, quiet=False, magnitude=None
     ):
         """
         Applying scaling relations to the SOHO VIRGO/PMO6 total solar
@@ -123,7 +122,7 @@ class Hyperparameters(list):
         luminosity : ~astropy.units.Quantity
             Stellar luminosity
         bandpass : str
-            Name of the observing bandpass. Default is "Kepler".
+            Name of the observing bandpass.
         name : str
             Name for the star or set of hyperparameters
         quiet : bool
@@ -133,10 +132,34 @@ class Hyperparameters(list):
             Magnitude of the target star in the observing band
         """
         hyperparameters = cls._load_from_json(default_hyperparameter_path)
+
+        # Extract the frequency with the maximum power from the solar fit.
+        # This value will not necessarily match Huber et al. (2011)'s value
+        # of 3090 uHz, for example.
+        pmodes = [
+            p['hyperparameters'] for p in hyperparameters
+            if 'w0' in p['metadata']['fixed_parameters']
+        ]
+        solar_nu_max = np.array([
+            p['w0'] / (2 * np.pi) for p in pmodes
+        ])[np.argmax([
+            p['Q'] * p['S0'] * p['w0'] for p in pmodes
+        ])] * u.uHz
+
+        if bandpass is None:
+            default_filter = 'Kepler/Kepler.K'
+            msg = (
+                "An observing bandpass is required to construct the kernel. gadfly will assume "
+                f'the default filter "{default_filter}". To prevent this warning, supply '
+                f"the Hyperparameters with the `bandpass` keyword argument."
+            )
+            warnings.warn(msg, AstropyUserWarning)
+            bandpass = default_filter
+
         scale_factors = cls._get_scale_factors(
             mass, radius, temperature, luminosity, quiet=quiet
         )
-        scaled_nu_max = scale._solar_nu_max * scale_factors['nu_max']
+        scaled_nu_max = solar_nu_max * scale_factors['nu_max']
 
         scaled_hyperparameters = []
         for item in hyperparameters:
@@ -203,17 +226,21 @@ class Hyperparameters(list):
 
                 # scale the p-mode frequencies
                 solar_delta_nu = (
-                    params['w0'] / (2 * np.pi) * u.uHz - scale._solar_nu_max
+                    params['w0'] / (2 * np.pi) * u.uHz - solar_nu_max
                 )
                 scaled_delta_nu = solar_delta_nu * scale_factors['delta_nu']
-                scaled_w0 = 2 * np.pi * (scaled_nu_max + scaled_delta_nu).to(u.uHz).value
-
-                # scale the quality factors by scaling the p-mode peaks' FWHM:
-                unscaled_fwhm = scaled_w0 / (2 * params['Q'])  # this goes like tau^-1
-                scaled_fwhm = unscaled_fwhm * scale_factors['fwhm']
-                scaled_Q = scaled_w0 / (2 * scaled_fwhm)
+                scaled_nu = (scaled_nu_max + scaled_delta_nu).to(u.uHz).value
+                scaled_w0 = 2 * np.pi * scaled_nu
 
                 if scaled_w0 > 0:
+                    # scale the quality factors by scaling the p-mode peaks' FWHM:
+                    unscaled_fwhm = scaled_w0 / (2 * params['Q'])  # this goes like tau^-1
+                    nu_solar = params['w0'] / (2 * np.pi)
+                    scaled_fwhm = unscaled_fwhm * scale.fwhm(
+                        scaled_nu, scaled_nu_max.to(u.uHz).value, nu_solar
+                    )
+                    scaled_Q = scaled_w0 / (2 * scaled_fwhm)
+
                     scaled_hyperparameters.append(
                         dict(
                             hyperparameters=dict(
@@ -364,7 +391,7 @@ class ShotNoiseKernel(celerite2_terms.SHOTerm):
     """
 
     # This is intentionally really large. In [uHz].
-    w0 = 1e10
+    w0 = 1e7
 
     # value does not matter much if w0 >>> 1
     Q = 0.5
