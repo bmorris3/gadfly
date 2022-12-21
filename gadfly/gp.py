@@ -46,7 +46,14 @@ class GaussianProcess(CeleriteGaussianProcess):
 
         if light_curve is not None:
             t = self._time_to_freq(light_curve.time)
-            self._original_flux_median = np.median(light_curve.flux)
+
+            if hasattr(light_curve.flux, 'unmasked'):
+                # for compatibility with astropy v5.2
+                median_flux = np.nanmedian(light_curve.flux.unmasked)
+            else:
+                median_flux = np.median(light_curve.flux)
+
+            self._original_flux_median = median_flux
             kwargs['yerr'] = self._flux_to_ppm(light_curve.flux_err, is_error=True)
 
         super().__init__(kernel, t=t, mean=mean, **kwargs)

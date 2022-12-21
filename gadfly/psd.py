@@ -475,7 +475,6 @@ class PowerSpectrum:
                     t, f = interpolate_missing_data(lc.time.jd, lc.flux.value)
                 else:
                     t, f = lc.time.jd, lc.flux.value
-                e = np.median(lc.flux_err.value) * np.ones_like(f)
 
                 # if the light curve is not given in units combatible with ppm,
                 # normalize it with a polynomial, center it at zero
@@ -485,7 +484,14 @@ class PowerSpectrum:
                         t - t.mean()
                     )
                     normed_flux = f / fit
-                    flux_ppm = 1e6 * np.array(normed_flux / np.median(normed_flux) - 1) * ppm
+
+                    if hasattr(normed_flux, 'unmasked'):
+                        # for compatibility with astropy v5.2
+                        median_flux = np.nanmedian(normed_flux.unmasked)
+                    else:
+                        median_flux = np.median(normed_flux)
+
+                    flux_ppm = 1e6 * np.array(normed_flux / median_flux - 1) * ppm
                 else:
                     flux_ppm = f.copy()
 
@@ -493,7 +499,6 @@ class PowerSpectrum:
                     time=t,
                     # convert detrended flux to ppm with zero-mean:
                     flux=flux_ppm,
-                    flux_err=e
                 )
                 lcs_interped.append(lc_int)
 
