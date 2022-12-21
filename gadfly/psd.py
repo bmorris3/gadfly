@@ -470,7 +470,7 @@ class PowerSpectrum:
             lcs_interped = []
             for lc in light_curve:
                 lc_flux_unit = lc.flux.unit
-                lc = lc.remove_nans().remove_outliers()
+                lc = lc.remove_nans()
                 if method_is_fft:
                     t, f = interpolate_missing_data(lc.time.jd, lc.flux.value)
                 else:
