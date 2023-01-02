@@ -42,7 +42,12 @@ observed power spectra.
 
     # Generate a celerite2 kernel that approximates the solar
     # power spectrum with one-minute cadence
-    kernel = SolarOscillatorKernel(texp=1 * u.min)
+    kernel = SolarOscillatorKernel(
+        # set the observing cadence:
+        texp=1 * u.min,
+        # set the observing bandpass
+        bandpass='SOHO VIRGO'
+    )
 
     # Plot the kernel's PSD, and the observed (binned) solar PSD:
     fig, ax = kernel.plot(
@@ -134,8 +139,12 @@ generalization of the :py:class:`~gadfly.SolarOscillatorKernel`.
             name=f'KIC {kic}', quiet=True
         )
 
-        # Assemble a celerite2-compatible kernel for the star:
-        kernel = StellarOscillatorKernel(hp, texp=1 * u.min)
+        # Assemble a celerite2-compatible kernel for the star,
+        # observed in the Kepler bandpass at 1 min cadence:
+        kernel = StellarOscillatorKernel(
+            hp, texp=1 * u.min,
+            bandbass='Kepler/Kepler.K'
+        )
 
         # Plot the kernel's PSD:
         kernel.plot(

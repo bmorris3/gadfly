@@ -5,12 +5,12 @@ from astropy.units import cds  # noqa
 
 from lightkurve import LightCurve
 
-from ..core import Hyperparameters, SolarOscillatorKernel
+from ..core import SolarOscillatorKernel
 from ..gp import GaussianProcess
 from ..psd import PowerSpectrum
 from ..scale import (
-    _solar_mass, _solar_temperature,
-    _solar_radius, _solar_luminosity, amplitude_with_wavelength
+    _solar_mass, _solar_temperature, _solar_radius,
+    amplitude_with_wavelength, nu_max, delta_nu
 )
 
 
@@ -19,7 +19,7 @@ def test_ps_lc_round_trip(n_trials=10, bin=15):
     np.random.seed(42)
     power_units = u.cds.ppm ** 2 / u.uHz
 
-    kernel = SolarOscillatorKernel(texp=1 * u.min)
+    kernel = SolarOscillatorKernel(texp=1 * u.min, bandpass='SOHO VIRGO')
 
     t = np.linspace(0, 100, int(1e5)) * u.d
 
@@ -50,15 +50,18 @@ def test_ps_lc_round_trip(n_trials=10, bin=15):
 
 
 def test_scaling_relations_to_solar():
+    bandpass = 'SOHO VIRGO'
     # initialize a "star" with exactly solar parameters:
-    params = Hyperparameters.for_star(
-        _solar_mass, _solar_radius,
-        _solar_temperature, _solar_luminosity,
-        bandpass='Kepler/Kepler.K'
+    mass, rad, temp = (
+        _solar_mass, _solar_radius, _solar_temperature
     )
 
     # now compute scale factors and ensure they're all unity
-    should_be_ones = np.array(list(params.scale_factors.values()))
+    should_be_ones = np.array([
+        amplitude_with_wavelength(bandpass, temp),
+        nu_max(mass, temp, rad),
+        delta_nu(mass, rad)
+    ])
     np.testing.assert_allclose(np.ones_like(should_be_ones), should_be_ones)
 
 

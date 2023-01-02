@@ -5,7 +5,7 @@ import numpy as np
 import astropy.units as u
 from astropy.units import cds  # noqa
 from astropy.io import fits
-from astropy.table import QTable, Table
+from astropy.table import Table, QTable
 from astropy.time import Time
 from astropy.utils.data import download_file
 
@@ -15,7 +15,7 @@ full_soho_virgo_url = "https://stsci.box.com/shared/static/ejsyj0bse6ciqq0ry2gzj
 one_year_soho_virgo_url = "https://stsci.box.com/shared/static/lk6aqc1w8gjwt1ff1foad4i9lukuj76u.gz"
 default_p_mode_path = os.path.join(
     os.path.dirname(os.path.abspath(__file__)),
-    'data', 'broomhall_2009_p_modes.ecsv'
+    'data', 'broomhall2009_table2_labeled.ecsv'
 )
 
 
@@ -30,11 +30,41 @@ def broomhall_p_mode_freqs(path=None):
     """
     if path is None:
         path = default_p_mode_path
+    return QTable.read(path)
 
-    return QTable.read(path, format='ascii.ecsv')['nu']
+
+def _p_mode_fit_to_sho_hyperparams(p_mode_parameters):
+    (S0_ell_0, S0_ell_1, S0_ell_2, S0_ell_3,
+     Q_ell_0, Q_ell_1, Q_ell_2, Q_ell_3) = p_mode_parameters
+
+    freq, ell_labels = broomhall_p_mode_freqs().to_pandas().to_numpy().T
+
+    mask_l0 = np.where(ell_labels == 0, 1, 0)
+    mask_l1 = np.where(ell_labels == 1, 1, 0)
+    mask_l2 = np.where(ell_labels == 2, 1, 0)
+    mask_l3 = np.where(ell_labels == 3, 1, 0)
+
+    S0s = (
+        mask_l0 * S0_ell_0 +
+        mask_l1 * S0_ell_1 +
+        mask_l2 * S0_ell_2 +
+        mask_l3 * S0_ell_3
+    )
+
+    Qs = (
+        mask_l0 * Q_ell_0 +
+        mask_l1 * Q_ell_1 +
+        mask_l2 * Q_ell_2 +
+        mask_l3 * Q_ell_3
+    )
+
+    out = np.vstack([S0s, 2 * np.pi * freq, Qs])
+    return out, ell_labels
 
 
-def download_soho_virgo_time_series(full_time_series=False, cache=True, name='SOHO VIRGO/PMO6'):
+def download_soho_virgo_time_series(
+        full_time_series=False, cache=True, name='SOHO VIRGO/PMO6'
+):
     """
     Download the total solar irradiance time series measurements
     from the SOHO VIRGO/PMO6 instrument [1]_.
@@ -96,7 +126,11 @@ def download_soho_virgo_time_series(full_time_series=False, cache=True, name='SO
         )
 
     else:
-        tab = Table.read(download_file(one_year_soho_virgo_url, cache=cache, pkgname='gadfly'))
+        tab = Table.read(
+            download_file(
+                one_year_soho_virgo_url, cache=cache, pkgname='gadfly'
+            )
+        )
         times = tab['time'].data
 
         return LightCurve(

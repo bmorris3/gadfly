@@ -91,13 +91,18 @@ def plot_power_spectrum(
     ax : :py:class:`~matplotlib.axes.Axes`
     """
     if obs is None and kernel is None:
-        raise ValueError("Requires an observed power spectrum, a kernel, or both.")
+        raise ValueError("Requires an observed power "
+                         "spectrum, a kernel, or both.")
 
     import matplotlib.pyplot as plt
 
     if freq is None:
-        frequencies_all = np.logspace(-1, 3.5, int(n_samples) // 2) * u.uHz
-        frequencies_p_mode = np.linspace(2000, 4500, int(n_samples) // 2) * u.uHz
+        frequencies_all = np.logspace(
+            -1, 3.5, int(n_samples) // 2
+        ) * u.uHz
+        frequencies_p_mode = np.linspace(
+            2000, 4500, int(n_samples) // 2
+        ) * u.uHz
 
         freq = np.sort(
             np.concatenate([frequencies_all, frequencies_p_mode])
@@ -182,11 +187,16 @@ def spectral_binning(y, all_x, all_y):
     """
     Spectral binning via trapezoidal approximation.
     """
-    min_ind = np.argwhere(all_y == y[0])[0, 0]
-    max_ind = np.argwhere(all_y == y[-1])[0, 0]
-    if max_ind > min_ind:
-        return np.trapz(y, all_x[min_ind:max_ind + 1]) / (all_x[max_ind] - all_x[min_ind])
-    return y[0]
+    if y[0] in all_y and y[-1] in all_y:
+        min_ind = np.argwhere(all_y == y[0])[0, 0]
+        max_ind = np.argwhere(all_y == y[-1])[0, 0]
+        if max_ind > min_ind and all_x[max_ind] - all_x[min_ind] > 0:
+            return (
+                np.trapz(y, all_x[min_ind:max_ind + 1]) /
+                (all_x[max_ind] - all_x[min_ind])
+            )
+        return y[0]
+    return np.nan
 
 
 def spectral_binning_err(y, all_x, all_y, constant=1):
@@ -194,20 +204,25 @@ def spectral_binning_err(y, all_x, all_y, constant=1):
     Approximate uncertainties for spectral bins estimated
     from a solar/stellar power spectrum.
     """
-    min_ind = np.argwhere(all_y == y[0])[0, 0]
-    max_ind = np.argwhere(all_y == y[-1])[0, 0]
-    mean_x = np.nanmean(all_x[min_ind:max_ind + 1])
+    if y[0] in all_y and y[-1] in all_y:
+        min_ind = np.argwhere(all_y == y[0])[0, 0]
+        max_ind = np.argwhere(all_y == y[-1])[0, 0]
+        mean_x = np.nanmean(all_x[min_ind:max_ind + 1])
 
-    # This term scales down the stddev (uncertainty) by the root of the
-    # number of points in the bin == Gaussian uncertainty
+        # This term scales down the stddev (uncertainty) by the root of the
+        # number of points in the bin == Gaussian uncertainty
 
-    if max_ind > min_ind:
-        gaussian_term = np.nanstd(y) / len(y) ** 0.5
-        # This term scales the uncertainty with the spectral resolution of the bin
-        non_gaussian_term = mean_x / (all_x[max_ind] - all_x[min_ind]) / constant
+        if max_ind > min_ind and all_x[max_ind] - all_x[min_ind] > 0:
+            gaussian_term = np.nanstd(y) / len(y) ** 0.5
+            # This term scales the uncertainty with the spectral resolution of the bin
+            non_gaussian_term = (
+                mean_x /
+                (all_x[max_ind] - all_x[min_ind]) /
+                constant
+            )
 
-        return gaussian_term * non_gaussian_term
-
+            return gaussian_term * non_gaussian_term
+        return y[0]
     return np.nan
 
 
@@ -470,7 +485,12 @@ class PowerSpectrum:
             lcs_interped = []
             for lc in light_curve:
                 lc_flux_unit = lc.flux.unit
-                lc = lc.remove_nans()
+                # we take the unmasked fluxes to avoid an astropy
+                # MaskedQuantity bug raised when calling np.median later
+                # to normalize the light curve:
+                if hasattr(lc.flux, 'unmasked'):
+                    lc.flux = lc.flux.unmasked
+                lc = lc.remove_nans().remove_outliers()
                 if method_is_fft:
                     t, f = interpolate_missing_data(lc.time.jd, lc.flux.value)
                 else:
@@ -485,11 +505,9 @@ class PowerSpectrum:
                     )
                     normed_flux = f / fit
 
-                    if hasattr(normed_flux, 'unmasked'):
-                        # for compatibility with astropy v5.2
-                        median_flux = np.nanmedian(normed_flux.unmasked)
-                    else:
-                        median_flux = np.median(normed_flux)
+                    if hasattr(normed_flux, 'value'):
+                        normed_flux = normed_flux.value
+                    median_flux = np.median(normed_flux)
 
                     flux_ppm = 1e6 * np.array(normed_flux / median_flux - 1) * ppm
                 else:
@@ -522,7 +540,7 @@ class PowerSpectrum:
             if isinstance(light_curve, LightCurveCollection):
                 light_curve = light_curve.stitch(lambda x: x)
 
-            d = np.median(np.diff(light_curve.time)).to(u.d)
+            d = np.median(np.diff(light_curve.time.jd)) * u.day
             time = light_curve.time.jd * u.day
             flux = light_curve.flux
             name = light_curve.meta.get('name', name)
@@ -583,12 +601,12 @@ class PowerSpectrum:
         return freq, power, norm
 
     def plot(self, **kwargs):
-        """
-        See docstring for :py:func:`~gadfly.plot_power_spectrum` for arguments
-        """
         return plot_power_spectrum(
             obs=self, **kwargs
         )
+
+    # Add docstring to function that this method wraps:
+    plot.__doc__ = plot_power_spectrum.__doc__
 
     def cutout(self, frequency_min=None, frequency_max=None):
         """
@@ -626,5 +644,6 @@ class PowerSpectrum:
             args.append(self.error[bounds])
 
         return PowerSpectrum(
-            self.frequency[bounds], self.power[bounds], *args, name=name, norm=self.norm
+            self.frequency[bounds], self.power[bounds], *args,
+            name=name, norm=self.norm
         )

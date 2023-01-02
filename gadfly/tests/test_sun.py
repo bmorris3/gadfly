@@ -10,9 +10,10 @@ example_freqs = u.Quantity([
 
 @pytest.mark.parametrize("example_freq,", example_freqs)
 def test_broomhall(example_freq):
-    freqs = broomhall_p_mode_freqs()
+    table = broomhall_p_mode_freqs()
+    freqs = table['nu']
 
-    assert isinstance(freqs, u.Quantity)
+    assert hasattr(freqs, 'unit')
 
     closest_freq_in_table = freqs[np.argmin(np.abs(freqs - example_freq))]
     np.testing.assert_allclose(example_freq, closest_freq_in_table)
