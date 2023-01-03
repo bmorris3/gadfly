@@ -533,8 +533,10 @@ class ShotNoiseKernel(celerite2_terms.SHOTerm):
 
 class Filter(tynt.Filter):
     """
-    Convenience subclass for the ``tynt`` [1]_ API for photometric
+    Convenience subclass for the ``tynt`` API for photometric
     filter transmittance curves.
+
+    ``tynt`` is a parameterized filter bandpass package [1]_.
 
     References
     ----------
@@ -545,7 +547,16 @@ class Filter(tynt.Filter):
     default_filter = 'Kepler/Kepler.K'
 
     def __init__(self, identifier_or_filter, download=False):
-
+        """
+        Parameters
+        ----------
+        identifier_or_filter : str, ~gadfly.Filter, ~tynt.Filter
+            Input name of the filter, or a ``gadfly`` or ``tynt``
+            implementation of the filter object.
+        download : bool
+            If True, download the true transmittance curve. Default
+            is False.
+        """
         # Use Kepler bandpass if None specified, and give a warning.
         if identifier_or_filter is None:
             msg = (
