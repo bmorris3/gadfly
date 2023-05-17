@@ -177,6 +177,20 @@ class Hyperparameters(list):
         # get access to the astronomical filter bandpass via tynt:
         filt = Filter(bandpass)
 
+        # scale the amplitudes for the observing bandpass:
+        amp_with_wavelength = scale.amplitude_with_wavelength(
+            filt, temperature
+        )
+
+        # scale the amplitudes by a term for granulation
+        granulation_amp = scale.granulation_amplitude(
+            mass, temperature, luminosity
+        )
+
+        granulation_timescale = scale.tau_gran(
+            mass, temperature, luminosity
+        )
+
         # scale the hyperparameters for each of the granulation components
         scaled_hyperparameters = []
         for item in granulation_hyperparams:
@@ -185,19 +199,13 @@ class Hyperparameters(list):
             scale_S0 = (
                 params['S0'] *
                 # scale the amplitudes by a term for granulation:
-                scale.granulation_amplitude(
-                    mass, temperature, luminosity
-                ) *
+                granulation_amp *
                 # also scale the amplitudes for the observing bandpass:
-                scale.amplitude_with_wavelength(
-                    filt, temperature
-                )
+                amp_with_wavelength
             )
 
             # scale the timescales:
-            scaled_w0 = params['w0'] / scale.tau_gran(
-                mass, temperature, luminosity
-            )
+            scaled_w0 = params['w0'] / granulation_timescale
 
             if scaled_w0 > 0:
                 scaled_hyperparameters.append(
@@ -224,11 +232,13 @@ class Hyperparameters(list):
         # amplitude of granulation at the frequency where the
         # oscillations occur:
         solar_nu = solar_w0 / (2 * np.pi) * u.uHz
+
         granulation_background_solar = _sho_psd(
-            2 * np.pi * solar_nu.value[:, None],
-            solar_gran_S0[None, :],
-            solar_gran_w0[None, :], solar_gran_Q[None, :]
-        )
+            2 * np.pi * solar_nu[:, None],
+            solar_gran_S0[None, :] * u.cds.ppm**2 / u.uHz,
+            solar_gran_w0[None, :] * u.uHz,
+            solar_gran_Q[None, :]
+        ) * amp_with_wavelength
 
         scale_delta_nu = scale.delta_nu(mass, radius)
         solar_delta_nu = solar_nu - solar_nu_max
@@ -237,12 +247,19 @@ class Hyperparameters(list):
         scaled_w0 = 2 * np.pi * scaled_nu.to(u.uHz).value
 
         # limit to positive scaled frequencies:
-        # only_positive_omega = scaled_w0 > 0
-        # solar_nu = solar_nu[only_positive_omega]
-        # S0_fit = S0_fit[only_positive_omega]
-        # Q_fit = Q_fit[only_positive_omega]
-        # scaled_nu = scaled_nu[only_positive_omega]
-        # scaled_w0 = scaled_w0[only_positive_omega]
+        only_positive_omega = scaled_w0 > 0
+        solar_nu = solar_nu[only_positive_omega]
+        S0_fit = S0_fit[only_positive_omega]
+        Q_fit = Q_fit[only_positive_omega]
+        scaled_nu = scaled_nu[only_positive_omega]
+        scaled_w0 = scaled_w0[only_positive_omega]
+
+        # if bandpass isn't SOHO, use mean wavelength:
+        wavelength = (
+            filt.mean_wavelength
+            if filt.mean_wavelength is not None
+            else 550 * u.nm
+        )
 
         p_mode_scale_factor = (
             # scale p-mode "heights" like Kiefer et al. (2018)
@@ -250,52 +267,48 @@ class Hyperparameters(list):
             scale.p_mode_intensity(
                 temperature, scaled_nu, scaled_nu_max,
                 scale._solar_delta_nu * scale_delta_nu,
-                filt.mean_wavelength
+                wavelength
             ) *
-            # scale the p-mode amplitudes like Kjeldsen & Bedding (2011)
-            # according to stellar spectroscopic parameters:
+            # scale the p-mode amplitudes according to
+            # stellar spectroscopic parameters:
             scale.p_mode_amplitudes(
-                mass, radius, temperature, luminosity,
-                scaled_nu, solar_nu,
-                filt.mean_wavelength
+                mass, temperature, luminosity
             )
         )
+
         # scale the quality factors:
-        scale_factor_Q = scale.quality(
-            scaled_nu_max, temperature
+        scaled_Gamma = 1.02 * np.exp(
+            (temperature - scale._solar_temperature) / (436 * u.K)
         )
-        scaled_Q = Q_fit * scale_factor_Q
+        solar_Gamma = solar_nu.to_value(u.uHz) / Q_fit / 2  # [uHz]
+        scaled_Q = Q_fit * scaled_Gamma / solar_Gamma
 
         solar_psd_at_p_mode_peaks = _sho_psd(
-            2 * np.pi * solar_nu.value, S0_fit,
-            2 * np.pi * solar_nu.value, Q_fit
-        ) * u.cds.ppm ** 2 / u.uHz
+            2 * np.pi * solar_nu,
+            S0_fit * u.cds.ppm**2 / u.uHz,
+            solar_w0[only_positive_omega] * u.uHz,
+            Q_fit
+        )
 
         # Following Chaplin 2008 Eqn 3:
         A = 2 * np.sqrt(4 * np.pi * solar_nu * solar_psd_at_p_mode_peaks)
-        solar_mode_width = scale._lifetimes_lund(5777)
-        scaled_mode_width = scale._lifetimes_lund(temperature.value)
-        unscaled_height = 2 * A ** 2 / (np.pi * solar_mode_width)
+        unscaled_height = 2 * A ** 2 / (np.pi * solar_Gamma)
 
         scaled_height = (
-            unscaled_height *
-            # scale to trace the envelope in power with frequency:
-            p_mode_scale_factor *
-            # scale to the correct bandpass:
-            scale.amplitude_with_wavelength(
-                filt, temperature
-            )
+            unscaled_height * p_mode_scale_factor
         )
-        scaled_A = np.sqrt(np.pi * scaled_mode_width * scaled_height / 2)
+        scaled_A = np.sqrt(np.pi * scaled_Gamma * scaled_height / 2)
         scaled_psd_at_p_mode_peaks = (
             (scaled_A / 2)**2 / (4 * np.pi * scaled_nu)
-        ).to(u.cds.ppm**2/u.uHz).value
-        gran_background_solar = granulation_background_solar.sum(1)
+        ).to_value(u.cds.ppm**2/u.uHz)
 
         scaled_S0 = (
-            np.pi * scaled_psd_at_p_mode_peaks /
+            0.5 *
+            (np.pi / 2)**0.5 *
+            scaled_psd_at_p_mode_peaks /
             scaled_Q ** 2
-        ) * gran_background_solar
+        ) * granulation_background_solar.sum(1)[only_positive_omega].value
+
         scaled_w0 = np.ravel(
             np.repeat(scaled_w0[None, :], len(S0_fit), 0)
         )
@@ -569,7 +582,7 @@ class Filter(tynt.Filter):
             identifier_or_filter = self.default_filter
 
         # Define a "bandpass" for SOHO, which is bolometric
-        if identifier_or_filter.upper() == 'SOHO VIRGO':
+        if isinstance(identifier_or_filter, str) and identifier_or_filter.upper() == 'SOHO VIRGO':
             wavelength = np.logspace(-1.5, 1.5, 1000) * u.um
             super().__init__(wavelength, np.ones_like(wavelength.value))
 
@@ -577,7 +590,10 @@ class Filter(tynt.Filter):
             if isinstance(identifier_or_filter, (tynt.Filter, Filter)):
                 # this happens if the user supplies a filter, we just
                 # return the same filter:
-                return identifier_or_filter
+                super().__init__(
+                    identifier_or_filter.wavelength,
+                    identifier_or_filter.transmittance
+                )
             else:
                 # otherwise try to reconstruct the bandpass transmittance from
                 # the tynt FFT parameterization:
@@ -600,4 +616,6 @@ class Filter(tynt.Filter):
         """
         Transmittance-weighted mean wavelength of the filter bandpass.
         """
+        if np.all(self.transmittance == 1):
+            return None
         return np.average(self.wavelength, weights=self.transmittance)

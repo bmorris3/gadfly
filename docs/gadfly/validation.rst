@@ -117,7 +117,7 @@ Now we'll call a big loop to do most of the work:
         # plots:
         obs_kw = dict(color='k', marker='.', lw=0)
 
-        ps.bin(600).plot(
+        ps.bin(1_500).plot(
             ax=axis,
             kernel=kernel,
             freq=ps.frequency,
@@ -202,7 +202,7 @@ Ok, let's see the output:
         obs_kw = dict(color='k', marker='.', lw=0)
 
         # Plot the binned PSD of the light curve:
-        ps.bin(600).plot(
+        ps.bin(1_500).plot(
             ax=axis,
             kernel=kernel,
             freq=ps.frequency,
@@ -320,7 +320,7 @@ to see the code that generates this plot):
         ps = PowerSpectrum.from_light_curve(
             light_curve, name=name,
             detrend_poly_order=1
-        ).bin(200)
+        ).bin(1_500)
 
         kernel_kw = dict(color=f"C{i}", alpha=0.9)
         obs_kw = dict(color='k', marker='.', lw=0)
@@ -374,7 +374,7 @@ Kepler would observe for each target.
 
     # read a curated table of a few targets from Huber et al. (2011)
     sequence = Table.read(
-        'data/huber2011_sample.ecsv', format='ascii.ecsv'
+        'huber2011_sample.ecsv', format='ascii.ecsv'
     )[['KIC', 'mass', 'rad', 'teff', 'lum', 'cad_2']]
 
     # create a frequency grid for PSD estimates:
@@ -407,7 +407,7 @@ Kepler would observe for each target.
         ps = PowerSpectrum.from_light_curve(
             light_curve, name=name,
             detrend_poly_order=3,
-        ).bin(50)
+        ).bin(500)
 
         # adjust some plot settings:
         kernel_kw = dict(color=f"C{i}", alpha=0.9)
