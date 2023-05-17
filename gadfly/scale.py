@@ -81,7 +81,7 @@ def _amplitudes_huber(mass, temperature, luminosity):
 
 
 @u.quantity_input(mass=u.g, temperature=u.K, luminosity=u.L_sun)
-def _p_mode_amplitudes_huber(mass, temperature, luminosity):
+def p_mode_amplitudes(mass, temperature, luminosity):
     """
     p-mode oscillation power amplitudes.
 
@@ -107,19 +107,30 @@ def _p_mode_amplitudes_huber(mass, temperature, luminosity):
     )
 
 
-def tau_osc(temperature):
+def tau_osc(temperature, nu, nu_max, nu_solar):
     # mode lifetime
-    return 1 / (np.pi * _lifetimes_lund(temperature.value))
+    return 1 / (np.pi * _lifetimes_lund(temperature, nu, nu_max, nu_solar))
 
 
-def _p_mode_amplitudes_kb2011(
-    mass, radius, temperature, luminosity, nu, wavelength, r=2.0
+def _p_mode_amplitudes_kallinger2014(
+    mass, radius, temperature, filter=None
 ):
-    # Kjeldsen & Bedding (2011), Eqn 20
-    return (
-        luminosity * tau_osc(temperature) ** 0.5 /
-        (wavelength * mass ** 1.5 * temperature ** (2.25 - r))
+    # Kallinger et al. 2014, page 13
+    g = mass / radius ** 2
+
+    bolometric_amplitude_scaling = (
+        g ** -0.66 * mass ** -0.35 * temperature ** 0.04
     )
+
+    # scale with approach from Morris 2020
+    if filter is None:
+        alpha = 1
+    else:
+        alpha = amplitude_with_wavelength(filter, temperature)
+
+    scaled_amplitude = alpha * bolometric_amplitude_scaling
+
+    return scaled_amplitude
 
 
 @u.quantity_input(
@@ -127,9 +138,8 @@ def _p_mode_amplitudes_kb2011(
     luminosity=u.L_sun, wavelength=u.nm,
     nu=u.Hz, nu_solar=u.Hz
 )
-def p_mode_amplitudes(
-    mass, radius, temperature, luminosity,
-    nu, nu_solar, wavelength=550*u.nm
+def _p_mode_amplitudes_kallinger(
+    mass, radius, temperature, filter
 ):
     """
     p-mode oscillation power amplitudes.
@@ -140,24 +150,27 @@ def p_mode_amplitudes(
     ----------
     mass : ~astropy.units.Quantity
         Stellar mass
+    radius : ~astropy.units.Quantity
+        Stellar radius
     temperature : ~astropy.units.Quantity
         Effective temperature
-    luminosity : ~astropy.units.Quantity
-        Stellar luminosity
+    filter : str or ~tynt.Filter
+        Either the SVO FPS name for a filter bandpass available
+        via the ``tynt`` package, or an instance of the
+        :py:class:`~tynt.Filter` object itself.
 
     References
     ----------
     .. [1] `Huber et al. (2011)
        <https://ui.adsabs.harvard.edu/abs/2011A%26A...529L...8K/abstract>`_
     """
-    num = _p_mode_amplitudes_kb2011(
-        mass, radius, temperature, luminosity, nu, wavelength
+    num = _p_mode_amplitudes_kallinger2014(
+        mass, radius, temperature, filter
     )
-    denom = _p_mode_amplitudes_kb2011(
-        _solar_mass, _solar_radius, _solar_temperature,
-        _solar_luminosity, nu_solar, 550 * u.nm
+    denom = _p_mode_amplitudes_kallinger2014(
+        _solar_mass, _solar_radius, _solar_temperature
     )
-    return (num / denom).to(u.dimensionless_unscaled).value
+    return (num / denom).to_value(u.dimensionless_unscaled)
 
 
 @u.quantity_input(mass=u.g, radius=u.m)
@@ -288,29 +301,56 @@ def _fwhm_deprecated(temperature, quiet=False):
     )
 
 
-def _lifetimes_lund(temperature):
+def _lifetimes_at_numax_lund(temperature):
     # Lund 2017 Eqn 32
     Gamma_0 = 0.07
     alpha = 0.91
     beta = 15.3
     return (
-        Gamma_0 + alpha * (temperature / 5777) ** beta
+        Gamma_0 + alpha * (temperature.value / 5777) ** beta
     ) * u.uHz
 
 
-def quality(nu_max, temperature):
+def _lifetimes_with_nu_lund(nu, nu_max):
+    # parameter pairs correspond to columns "b" and "a" in Table 4
+    # of Lund 2017
+    def f(param):
+        # apply linear fit for parameter value as function
+        # of temperature
+        a, b = param
+        return b + a * float(nu_max / (3090 * u.uHz))
+
+    alpha = f([2.95, 0.39])
+    Gamma_alpha = f([3.08, 3.32])
+
+    return np.exp(
+        # power law trend:
+        alpha * np.log(nu / nu_max) + np.log(Gamma_alpha) + 0
+    )
+
+
+def _scale_lifetimes_with_nu_lund(nu, nu_max, nu_solar):
+    return (
+        _lifetimes_with_nu_lund(nu, nu_max) /
+        _lifetimes_with_nu_lund(nu_solar, _solar_nu_max)
+    )
+
+
+def _lifetimes_lund(temperature, nu, nu_max, nu_solar):
+    return _lifetimes_with_nu_lund(nu, nu_max)
+
+
+def quality(nu_solar, nu_stellar, nu_max, temperature):
     """
     Scale the mode lifetime of p-mode oscillation peaks in power.
 
     Gets the mode lifetime scaling as a function of the p-mode
     central frequency before and after scaling, as
     shown in Figure 20 of Lund et al. (2017) [1]_, and the
-    scaling with frequency described by Eqn 30 of the same paper.
+    scaling with frequency described by Eqn 32 of the same paper.
 
     Parameters
     ----------
-    nu_max : ~astropy.units.Quantity
-        Frequency of the maximum p-mode oscillations.
     temperature : ~astropy.units.Quantity
         Stellar temperature
 
@@ -319,15 +359,23 @@ def quality(nu_max, temperature):
     .. [1] `Lund et al. (2017)
        <https://ui.adsabs.harvard.edu/abs/2017ApJ...835..172L/abstract>`_
     """
-    Gamma_sun = _lifetimes_lund(_solar_temperature.value)
-    solar_Q = (_solar_nu_max / Gamma_sun).to(u.dimensionless_unscaled).value
-    Gamma_star = _lifetimes_lund(temperature.value)
-    star_Q = (nu_max / Gamma_star).to(u.dimensionless_unscaled).value
-    scale_factor_Q = star_Q / solar_Q
+    Gamma_sun = _lifetimes_lund(_solar_temperature, nu_solar, _solar_nu_max, nu_solar)
+    solar_Q = nu_solar / Gamma_sun
+    Gamma_star = _lifetimes_lund(temperature, nu_stellar, nu_max, nu_solar)
+    star_Q = nu_stellar / Gamma_star
+    scale_factor_Q = (star_Q / solar_Q).to_value(u.dimensionless_unscaled)
     return scale_factor_Q
 
 
 def _tau_gran(mass, temperature, luminosity):
+    """
+    Granulation timescale scaling.
+
+    Kjeldsen & Bedding (2011) Eqn 9 [1]_.
+
+    .. [1] `Kjeldsen & Bedding (2011)
+       <https://ui.adsabs.harvard.edu/abs/2011A%26A...529L...8K/abstract>`_
+    """
     return luminosity / (mass * temperature ** 3.5)
 
 
@@ -486,9 +534,9 @@ def _v_osc_kiefer_scaled(freq, nu_max, delta_nu):
     S = -0.1  # asymmetry parameter
     a = 3299 * 1e4 * u.m**2 / u.s**2 / u.Hz  # height factor
     b = -581 * u.m**2 / u.s**2 / u.Hz  # offset factor
-    A = 1 / np.pi * (np.arctan(S * (freq - nu_max) / Sigma).to(u.rad).value + 0.5)
+    A = 1 / np.pi * (np.arctan(S * (freq - nu_max) / Sigma).to_value(u.rad) + 0.5)
     voigt_profile = Voigt1D(x_0=nu_max, amplitude_L=a, fwhm_L=2*gamma, fwhm_G=2.355 * sigma)
-    return (A * (b + voigt_profile(freq)) * u.uHz).to(u.m**2/u.s**2).value
+    return (A * (b + voigt_profile(freq)) * u.uHz).to_value(u.m**2/u.s**2)
 
 
 @u.quantity_input(freq=u.uHz, wavelength=u.nm, temperature=u.K)
@@ -579,7 +627,7 @@ def p_mode_intensity(
     # normalized so that at nu_max the relative amplitude is unity:
     relative_intensity = (
         intensity_stellar_freq / intensity_stellar_numax
-    ).to(u.dimensionless_unscaled).value
+    ).to_value(u.dimensionless_unscaled)
 
     return relative_intensity
 
