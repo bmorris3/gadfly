@@ -50,10 +50,22 @@ observed power spectra.
     )
 
     # Plot the kernel's PSD, and the observed (binned) solar PSD:
-    fig, ax = kernel.plot(
+    fig, ax = plt.subplots(1, 2, figsize=(10, 3.5))
+
+    # Plot one PSD with coarse binning:
+    kernel.plot(
+        ax=ax[0],
+        # plot the observed power spectrum
+        obs=ps.bin(bins=50)
+    )
+
+    # Plot another PSD with finer binning and p-modes:
+    kernel.plot(
+        ax=ax[1],
         p_mode_inset=True,
         # also plot the observed power spectrum
-        obs=ps.bin(bins=100)
+        obs=ps.bin(bins=1_500),
+        obs_kwargs=dict(marker='.', mfc='C1', ms=1)
     )
 
 The high power at low frequencies corresponds to super-granulation, and
