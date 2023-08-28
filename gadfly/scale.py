@@ -10,6 +10,8 @@ from astropy.modeling.models import BlackBody
 
 from tynt import FilterGenerator, Filter
 
+from .cython import p_mode_frequencies as _p_mode_freqs
+
 __all__ = [
     'p_mode_amplitudes', 'delta_nu', 'nu_max',
     'tau_eff', 'tau_gran',
@@ -45,6 +47,28 @@ dirname = os.path.dirname(os.path.abspath(__file__))
 default_alpha_table_path = os.path.join(
     dirname, 'data', 'estimate_alpha.json'
 )
+
+
+def p_mode_frequencies(
+    delta_nu=_solar_delta_nu, delta_nu_02=9*u.uHz,
+    P_rot=26*u.day, n_max=24, ell_max=3, eps=1.4
+):
+    freq_unit = u.uHz
+    n = np.arange(n_max + 1)
+    ell = np.arange(ell_max + 1)
+    m = np.arange(-ell_max, ell_max + 1)
+    delta_nu_star = (1 / P_rot).to(freq_unit)
+    nu_peak_init = (
+        (n[None, None, :] + ell[None, :, None]/2 + eps) * delta_nu.to(freq_unit) +
+        m[:, None, None] * delta_nu_star
+    )
+
+    return np.asarray(_p_mode_freqs(
+        nu_peak_init.value, n, ell, m,
+        eps, delta_nu.to_value(freq_unit),
+        delta_nu_star.to_value(freq_unit),
+        delta_nu_02.to_value(freq_unit)
+    )) * freq_unit
 
 
 @u.quantity_input(temperature=u.K)

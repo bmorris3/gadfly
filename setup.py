@@ -2,9 +2,9 @@
 # Licensed under a 3-clause BSD style license - see LICENSE.rst
 
 import os
-
-from setuptools import setup
-
+from setuptools import setup, Extension
+from Cython.Build import cythonize
+import numpy as np
 
 VERSION_TEMPLATE = """
 # Note that we need to fall back to the hard-coded version if either
@@ -17,8 +17,18 @@ except Exception:
     __version__ = '{version}'
 """.lstrip()
 
+ext_modules = [
+    Extension(
+        "gadfly.cython",
+        ["gadfly/cython.pyx"],
+        extra_compile_args=['-g0'],
+        extra_link_args=['-L/usr/lib/x86_64-linux-gnu/'],
+        include_dirs=[np.get_include()]
+    )
+]
+
 setup(
     use_scm_version={'write_to': os.path.join('gadfly', 'version.py'),
                      'write_to_template': VERSION_TEMPLATE},
-
+    ext_modules=cythonize(ext_modules)
 )

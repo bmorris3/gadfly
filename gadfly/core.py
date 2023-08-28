@@ -231,108 +231,115 @@ class Hyperparameters(list):
         # oscillation components, which also depend on the
         # amplitude of granulation at the frequency where the
         # oscillations occur:
-        solar_nu = solar_w0 / (2 * np.pi) * u.uHz
-
-        granulation_background_solar = _sho_psd(
-            2 * np.pi * solar_nu[:, None],
-            solar_gran_S0[None, :] * u.cds.ppm**2 / u.uHz,
-            solar_gran_w0[None, :] * u.uHz,
-            solar_gran_Q[None, :]
-        ) * amp_with_wavelength
-
-        scale_delta_nu = scale.delta_nu(mass, radius)
-        solar_delta_nu = solar_nu - solar_nu_max
-        scaled_delta_nu = solar_delta_nu * scale_delta_nu
-        scaled_nu = scaled_nu_max + scaled_delta_nu
-        scaled_w0 = 2 * np.pi * scaled_nu.to(u.uHz).value
-
-        # limit to positive scaled frequencies:
-        only_positive_omega = scaled_w0 > 0
-        solar_nu = solar_nu[only_positive_omega]
-        S0_fit = S0_fit[only_positive_omega]
-        Q_fit = Q_fit[only_positive_omega]
-        scaled_nu = scaled_nu[only_positive_omega]
-        scaled_w0 = scaled_w0[only_positive_omega]
-
-        # if bandpass isn't SOHO, use mean wavelength:
-        wavelength = (
-            filt.mean_wavelength
-            if filt.mean_wavelength is not None
-            else 550 * u.nm
-        )
-
-        p_mode_scale_factor = (
-            # scale p-mode "heights" like Kiefer et al. (2018)
-            # as a function of frequency (scaled_nu)
-            scale.p_mode_intensity(
-                temperature, scaled_nu, scaled_nu_max,
-                scale._solar_delta_nu * scale_delta_nu,
-                wavelength
-            ) *
-            # scale the p-mode amplitudes according to
-            # stellar spectroscopic parameters:
-            scale.p_mode_amplitudes(
-                mass, temperature, luminosity
-            )
-        )
-
-        # scale the quality factors:
-        scaled_Q = Q_fit * scale.quality(
-            solar_nu, scaled_nu, scaled_nu_max, temperature
-        )
-
-        solar_psd_at_p_mode_peaks = _sho_psd(
-            2 * np.pi * solar_nu,
-            S0_fit * u.cds.ppm**2 / u.uHz,
-            solar_w0[only_positive_omega] * u.uHz,
-            Q_fit
-        )
-
-        # Following Chaplin 2008 Eqn 3:
-        A = 2 * np.sqrt(4 * np.pi * solar_nu * solar_psd_at_p_mode_peaks)
-        solar_mode_width = scale._lifetimes_lund(
-            scale._solar_temperature, solar_nu, solar_nu_max, solar_nu
-        )
-        scaled_mode_width = scale._lifetimes_lund(
-            temperature, scaled_nu, scaled_nu_max, solar_nu
-        )
-        unscaled_height = 2 * A ** 2 / (np.pi * solar_mode_width)
-
-        scaled_height = (
-            unscaled_height * p_mode_scale_factor
-        )
-        scaled_A = np.sqrt(np.pi * scaled_mode_width * scaled_height / 2)
-        scaled_psd_at_p_mode_peaks = (
-            (scaled_A / 2)**2 / (4 * np.pi * scaled_nu)
-        ).to_value(u.cds.ppm**2/u.uHz)
-
-        scaled_S0 = (
-            (np.pi/2)**0.5 *
-            scaled_psd_at_p_mode_peaks /
-            scaled_Q ** 2 *
-            amp_with_wavelength
-        ) * granulation_background_solar.sum(1)[only_positive_omega].value
-
-        scaled_w0 = np.ravel(
-            np.repeat(scaled_w0[None, :], len(S0_fit), 0)
-        )
-        scaled_Q = np.ravel(scaled_Q)
-
-        for S0, w0, Q, degree in zip(scaled_S0, scaled_w0, scaled_Q, ell_labels):
-            if np.all(np.array([S0, w0]) > 0):
-                scaled_hyperparameters.append(
-                    dict(
-                        hyperparameters=dict(
-                            S0=S0,
-                            w0=w0,
-                            Q=Q),
-                        metadata=dict(
-                            source='oscillation',
-                            scaled=True,
-                            degree=degree
-                        )
-                    )
-                )
+        # solar_nu = solar_w0 / (2 * np.pi) * u.uHz
+        #
+        # granulation_background_solar = _sho_psd(
+        #     2 * np.pi * solar_nu[:, None],
+        #     solar_gran_S0[None, :] * u.cds.ppm**2 / u.uHz,
+        #     solar_gran_w0[None, :] * u.uHz,
+        #     solar_gran_Q[None, :]
+        # ) * amp_with_wavelength
+        #
+        # scale_delta_nu = scale.delta_nu(mass, radius)
+        # solar_delta_nu = solar_nu - solar_nu_max
+        # scaled_delta_nu = solar_delta_nu * scale_delta_nu
+        # scaled_nu = scaled_nu_max + scaled_delta_nu
+        # scaled_w0 = 2 * np.pi * scaled_nu.to(u.uHz).value
+        #
+        # # limit to positive scaled frequencies:
+        # only_positive_omega = scaled_w0 > 0
+        # solar_nu = solar_nu[only_positive_omega]
+        # S0_fit = S0_fit[only_positive_omega]
+        # Q_fit = Q_fit[only_positive_omega]
+        # scaled_nu = scaled_nu[only_positive_omega]
+        # scaled_w0 = scaled_w0[only_positive_omega]
+        #
+        # # if bandpass isn't SOHO, use mean wavelength:
+        # wavelength = (
+        #     filt.mean_wavelength
+        #     if filt.mean_wavelength is not None
+        #     else 550 * u.nm
+        # )
+        #
+        # p_mode_scale_factor = (
+        #     # scale p-mode "heights" like Kiefer et al. (2018)
+        #     # as a function of frequency (scaled_nu)
+        #     scale.p_mode_intensity(
+        #         temperature, scaled_nu, scaled_nu_max,
+        #         scale._solar_delta_nu * scale_delta_nu,
+        #         wavelength
+        #     ) #*
+        #     # scale the p-mode amplitudes according to
+        #     # stellar spectroscopic parameters:
+        #     # scale.p_mode_amplitudes(
+        #     #    mass, temperature, luminosity
+        #     # )
+        # )
+        #
+        # # scale the quality factors:
+        # scaled_Q = Q_fit * scale.quality(
+        #     solar_nu, scaled_nu, scaled_nu_max, temperature
+        # )
+        #
+        # solar_psd_at_p_mode_peaks = _sho_psd(
+        #     2 * np.pi * solar_nu,
+        #     S0_fit * u.cds.ppm**2 / u.uHz,
+        #     solar_w0[only_positive_omega] * u.uHz,
+        #     Q_fit
+        # ) #* granulation_background_solar.sum(1)[only_positive_omega].value
+        #
+        # # Following Chaplin 2008 Eqn 3:
+        # A = 2 * np.sqrt(4 * np.pi * solar_nu * solar_psd_at_p_mode_peaks)
+        # solar_mode_width = scale._lifetimes_lund(
+        #     scale._solar_temperature, solar_nu, solar_nu_max, solar_nu
+        # )
+        # scaled_mode_width = scale._lifetimes_lund(
+        #     temperature, scaled_nu, scaled_nu_max, solar_nu
+        # )
+        # unscaled_height = 2 * A ** 2 / (np.pi * solar_mode_width)
+        #
+        # scaled_height = (
+        #     unscaled_height * p_mode_scale_factor
+        # )
+        # scaled_A = np.sqrt(np.pi * scaled_mode_width * scaled_height / 2)
+        # scaled_psd_at_p_mode_peaks = (
+        #     (scaled_A / 2)**2 / (4 * np.pi * scaled_nu)
+        # ).to_value(u.cds.ppm**2/u.uHz)
+        #
+        # scaled_S0 = (
+        #     (np.pi/2)**0.5 *
+        #     scaled_psd_at_p_mode_peaks /
+        #     scaled_Q ** 2 *
+        #     amp_with_wavelength
+        # ) * granulation_background_solar.sum(1)[only_positive_omega].value
+        #
+        # # scale_granulation_background = _sho_psd(
+        # #     scaled_w0[:, None] * u.uHz,
+        # #     scaled_S0[None, :] * u.cds.ppm**2 / u.uHz,
+        # #     scaled_w0[None, :] * u.uHz,
+        # #     scaled_Q[None, :]
+        # # ) / granulation_background_solar.sum(1)[only_positive_omega].value
+        #
+        # scaled_w0 = np.ravel(
+        #     np.repeat(scaled_w0[None, :], len(S0_fit), 0)
+        # )
+        # scaled_Q = np.ravel(scaled_Q)
+        #
+        # for S0, w0, Q, degree in zip(scaled_S0, scaled_w0, scaled_Q, ell_labels):
+        #     if np.all(np.array([S0, w0]) > 0):
+        #         scaled_hyperparameters.append(
+        #             dict(
+        #                 hyperparameters=dict(
+        #                     S0=S0,
+        #                     w0=w0,
+        #                     Q=Q),
+        #                 metadata=dict(
+        #                     source='oscillation',
+        #                     scaled=True,
+        #                     degree=degree
+        #                 )
+        #             )
+        #         )
 
         return cls(scaled_hyperparameters, name, magnitude)
 

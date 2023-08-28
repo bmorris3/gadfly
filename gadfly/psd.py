@@ -442,7 +442,8 @@ class PowerSpectrum:
     @classmethod
     def from_light_curve(
         cls, light_curve, method='fft', include_zero_freq=False, name=None,
-        detrend=True, detrend_poly_order=3, save_detrended_lc=True
+        detrend=True, detrend_poly_order=3, save_detrended_lc=True,
+        sigma=None
     ):
         """
         Compute the power spectrum from a light curve.
@@ -480,48 +481,14 @@ class PowerSpectrum:
             light_curve = LightCurveCollection([light_curve])
 
         if detrend:
-            # Interpolate over missing data points in each quarter, normalize by a
-            # nth order polynomial to remove systematic trends
-            lcs_interped = []
-            for lc in light_curve:
-                lc_flux_unit = lc.flux.unit
-                # we take the unmasked fluxes to avoid an astropy
-                # MaskedQuantity bug raised when calling np.median later
-                # to normalize the light curve:
-                if hasattr(lc.flux, 'unmasked'):
-                    lc.flux = lc.flux.unmasked
-                lc = lc.remove_nans().remove_outliers()
-                if method_is_fft:
-                    t, f = interpolate_missing_data(lc.time.jd, lc.flux.value)
-                else:
-                    t, f = lc.time.jd, lc.flux.value
-
-                # if the light curve is not given in units combatible with ppm,
-                # normalize it with a polynomial, center it at zero
-                if not lc_flux_unit.is_equivalent(ppm):
-                    fit = np.polyval(
-                        np.polyfit(t - t.mean(), f, detrend_poly_order),
-                        t - t.mean()
-                    )
-                    normed_flux = f / fit
-
-                    if hasattr(normed_flux, 'value'):
-                        normed_flux = normed_flux.value
-                    median_flux = np.median(normed_flux)
-
-                    flux_ppm = 1e6 * np.array(normed_flux / median_flux - 1) * ppm
-                else:
-                    flux_ppm = f.copy()
-
-                lc_int = LightCurve(
-                    time=t,
-                    # convert detrended flux to ppm with zero-mean:
-                    flux=flux_ppm,
-                )
-                lcs_interped.append(lc_int)
+            lcs_interped = _detrend_lc_for_power_spectrum(
+                light_curve,
+                method_is_fft=method_is_fft,
+                detrend_poly_order=detrend_poly_order
+            )
 
             if len(lcs_interped) > 1:
-                slc = LightCurveCollection(lcs_interped).stitch(lambda x: x)
+                slc = _stitch_remove_outliers(LightCurveCollection(lcs_interped), sigma=sigma)
             else:
                 slc = lcs_interped[0]
 
@@ -538,7 +505,7 @@ class PowerSpectrum:
             name = light_curve[0].meta.get('name', name)
         else:
             if isinstance(light_curve, LightCurveCollection):
-                light_curve = light_curve.stitch(lambda x: x)
+                light_curve = _stitch_remove_outliers(light_curve, sigma=sigma)
 
             d = np.median(np.diff(light_curve.time.jd)) * u.day
             time = light_curve.time.jd * u.day
@@ -647,3 +614,58 @@ class PowerSpectrum:
             self.frequency[bounds], self.power[bounds], *args,
             name=name, norm=self.norm
         )
+
+
+def _detrend_lc_for_power_spectrum(light_curve_collection, method_is_fft=False, detrend_poly_order=3):
+    from lightkurve import LightCurve
+
+    # Interpolate over missing data points in each quarter, normalize by a
+    # nth order polynomial to remove systematic trends
+    lcs_interped = []
+    for lc in light_curve_collection:
+        lc_flux_unit = lc.flux.unit
+        # we take the unmasked fluxes to avoid an astropy
+        # MaskedQuantity bug raised when calling np.median later
+        # to normalize the light curve:
+        if hasattr(lc.flux, 'unmasked'):
+            lc.flux = lc.flux.unmasked
+        lc = lc.remove_nans().remove_outliers()
+        if method_is_fft:
+            t, f = interpolate_missing_data(lc.time.jd, lc.flux.value)
+        else:
+            t, f = lc.time.jd, lc.flux.value
+
+        # if the light curve is not given in units combatible with ppm,
+        # normalize it with a polynomial, center it at zero
+        if not lc_flux_unit.is_equivalent(ppm):
+            fit = np.polyval(
+                np.polyfit(t - t.mean(), f, detrend_poly_order),
+                t - t.mean()
+            )
+            normed_flux = f / fit
+
+            if hasattr(normed_flux, 'value'):
+                normed_flux = normed_flux.value
+            median_flux = np.median(normed_flux)
+
+            flux_ppm = 1e6 * np.array(normed_flux / median_flux - 1) * ppm
+        else:
+            flux_ppm = f.copy()
+
+        lc_int = LightCurve(
+            time=t,
+            # convert detrended flux to ppm with zero-mean:
+            flux=flux_ppm,
+        )
+        lcs_interped.append(lc_int)
+
+    return lcs_interped
+
+
+def _stitch_remove_outliers(light_curve_collection, sigma=None):
+    if sigma is None:
+        return light_curve_collection.stitch(lambda x: x)
+
+    return light_curve_collection.stitch(
+        lambda x: x.remove_outliers(sigma=sigma)
+    )
