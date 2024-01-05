@@ -11,12 +11,11 @@ ctypedef np.float64_t DTYPE_t
 # @cython.wraparound(False)
 def p_mode_frequencies(double [:, :, :] nu_peak_init,
                        long [:] n, long [:] ell, long [:] m,
-                       float eps, float delta_nu, float delta_nu_star,
+                       float eps, float delta_nu, #float delta_nu_star,
                        float delta_nu_02):
     """
     """
     cdef Py_ssize_t len_n = len(n)
-    cdef Py_ssize_t n_max = max(n)
     cdef Py_ssize_t len_ell = len(ell)
     cdef Py_ssize_t len_m = len(m)
     cdef Py_ssize_t i, j, k
@@ -35,7 +34,7 @@ def p_mode_frequencies(double [:, :, :] nu_peak_init,
                     ) - nu_peak_init[i, j-1, k]
                     nu_peak_init[i, j, k] -= delt
 
-                if j == 1 and 0 < k < n_max:
+                if j == 1 and 0 < k < len_n - 1 and j + 2 < len_ell:
                     # García (2019) eqn 17
                     delt = 0.5 * (
                         nu_peak_init[i, j, k-1] +

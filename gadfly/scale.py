@@ -28,7 +28,9 @@ _solar_luminosity = 1 * u.L_sun
 # Huber et al. (2011)
 # https://ui.adsabs.harvard.edu/abs/2011ApJ...743..143H/abstract
 _solar_nu_max = 3090 * u.uHz
-_solar_delta_nu = 135.1 * u.uHz
+
+_solar_delta_nu = 135.5 * u.uHz # Mosser 2013
+#135.1 * u.uHz # Huber 2011
 
 # Bahng & Schwarzschild (1961)
 # https://ui.adsabs.harvard.edu/abs/1961ApJ...134..312B/abstract
@@ -51,22 +53,23 @@ default_alpha_table_path = os.path.join(
 
 def p_mode_frequencies(
     delta_nu=_solar_delta_nu, delta_nu_02=9*u.uHz,
-    P_rot=26*u.day, n_max=24, ell_max=3, eps=1.4
+    n_max=24, ell_max=3, eps=1.32 # P_rot=26*u.day,
 ):
     freq_unit = u.uHz
     n = np.arange(n_max + 1)
     ell = np.arange(ell_max + 1)
     m = np.arange(-ell_max, ell_max + 1)
-    delta_nu_star = (1 / P_rot).to(freq_unit)
+    # delta_nu_star = (1 / P_rot).to(freq_unit)
     nu_peak_init = (
-        (n[None, None, :] + ell[None, :, None]/2 + eps) * delta_nu.to(freq_unit) +
-        m[:, None, None] * delta_nu_star
+        (n[None, None, :] + ell[None, :, None]/2 + eps) * delta_nu.to(freq_unit)
+        # + m[:, None, None] * delta_nu_star  # rotation term not included
+        + 0 * m[:, None, None]  # for broadcasting
     )
 
     return np.asarray(_p_mode_freqs(
-        nu_peak_init.value, n, ell, m,
+        nu_peak_init.to_value(freq_unit), n, ell, m,
         eps, delta_nu.to_value(freq_unit),
-        delta_nu_star.to_value(freq_unit),
+        # delta_nu_star.to_value(freq_unit),
         delta_nu_02.to_value(freq_unit)
     )) * freq_unit
 
@@ -372,7 +375,8 @@ def _scale_lifetimes_with_nu_lund(nu, nu_max, nu_solar):
 def _lifetimes_lund(temperature, nu, nu_max, nu_solar):
     return (
         _lifetimes_at_numax_lund(temperature) *
-        _scale_lifetimes_with_nu_lund(nu, nu_max, nu_solar)
+        _lifetimes_with_nu_lund(nu, nu_max)
+        # _scale_lifetimes_with_nu_lund(nu, nu_max, nu_solar)
     )
 
 
@@ -626,7 +630,7 @@ def _velocity_to_intensity(
 
 @u.quantity_input(freq=u.uHz, wavelength=u.nm, temperature=u.K)
 def p_mode_intensity(
-        temperature, freq, nu_max, delta_nu, wavelength=550 * u.nm
+    temperature, freq, nu_max, delta_nu, wavelength=550 * u.nm
 ):
     """
     Power spectrum intensity scaling for p-modes.
@@ -763,3 +767,168 @@ def amplitude_with_wavelength(filter, temperature, n_wavelengths=10_000, **kwarg
                  wl_micron)
     )
     return (ratio_0 * ratio_1).to(u.dimensionless_unscaled).value
+
+
+def p_mode_terms(
+    nu_max, delta_nu, mass, radius, temperature, filt,
+    n_max=30, ell_max=3,
+    n_kernel_terms=80,
+    # delta_nu_02=(9*u.uHz * nu_max.value / nu_max),
+    solar_granulation_hyperparams=None,
+    scaled_granulation_hyperparams=None#  P_rot, inc
+):
+    # avoid circular import:
+    from .core import _sho_psd
+    delta_nu_02 = (9 * u.uHz * float(nu_max / _solar_nu_max))
+
+    amplitudes = np.array([1, 1.52, 0.54, 0.03])
+    n = np.arange(n_max + 1)
+    ell = np.arange(ell_max + 1)
+    m = np.arange(-ell_max, ell_max + 1)
+
+    solar_nu_peak = p_mode_frequencies(
+        delta_nu=_solar_delta_nu, delta_nu_02=9*u.uHz,
+        n_max=n_max, ell_max=ell_max,
+    )
+
+    nu_peak = p_mode_frequencies(
+        delta_nu=delta_nu, delta_nu_02=delta_nu_02,
+        n_max=n_max, ell_max=ell_max,
+    )
+
+    Gamma = _lifetimes_lund(temperature, nu_peak, nu_max, solar_nu_peak)
+
+    # terms = []
+    hyperparams = []
+    solar_Gamma = _lifetimes_lund(temperature, solar_nu_peak, _solar_nu_max, solar_nu_peak)
+    solar_Q = (solar_nu_peak / solar_Gamma).to_value(u.dimensionless_unscaled)
+
+    amplitude_scaling = _p_mode_amplitudes_kallinger(
+        mass, radius, temperature, filter=filt
+    )
+    # print(f'amplitude_scaling={amplitude_scaling:.2g}', end='  ')
+    scaled_amplitude = p_mode_intensity(
+        temperature, nu_peak, nu_max, delta_nu,
+        wavelength=(
+            550 * u.nm if filt.mean_wavelength is None
+            else filt.mean_wavelength
+        )
+    )
+
+    for m_ind, m_value in enumerate(np.abs(m)):
+        for ell_ind, ell_value in enumerate(ell):
+            for n_ind, n_value in enumerate(n):
+                scale_p_mode_amp = scaled_amplitude[m_ind, ell_ind, n_ind]
+                w0 = 2 * np.pi * nu_peak[m_ind, ell_ind, n_ind].value
+
+                solar_nu_ratio = float(
+                    solar_nu_peak[m_ind, ell_ind, n_ind] /
+                    nu_peak[m_ind, ell_ind, n_ind]
+                )
+                # nu_max_ratio = float(
+                #     nu_max / nu_peak[m_ind, ell_ind, n_ind]
+                # )
+
+                # Q = solar_Q[m_ind, ell_ind, n_ind] / solar_nu_ratio
+                #Q = float(nu_peak[m_ind, ell_ind, n_ind] / Gamma[m_ind, ell_ind, n_ind])
+
+                const = (solar_nu_peak[m_ind, ell_ind, n_ind] / nu_peak[m_ind, ell_ind, n_ind]) #* (2 / np.pi) ** 0.5
+                Q = float(
+                    const * nu_peak[m_ind, ell_ind, n_ind] / Gamma[m_ind, ell_ind, n_ind]
+                )
+
+                # width_stellar = float(nu_peak[m_ind, ell_ind, n_ind] / Gamma[m_ind, ell_ind, n_ind])
+                # width_solar = float(solar_nu_peak[m_ind, ell_ind, n_ind] / solar_Gamma[m_ind, ell_ind, n_ind])
+
+                # width_stellar = Gamma[m_ind, ell_ind, n_ind].value
+                # width_solar = solar_Gamma[m_ind, ell_ind, n_ind].value
+
+
+                # print(f'r={width_solar/width_stellar:.2g}', end=' ')
+                # Q = (
+                #     solar_Q[m_ind, ell_ind, n_ind] * (width_solar / width_stellar)
+                # )
+
+                solar_granulation_psd = np.sum([
+                    _sho_psd(
+                        2 * np.pi * solar_nu_peak[m_ind, ell_ind, n_ind].value,
+                        S0=hyperparam['hyperparameters']['S0'],
+                        w0=hyperparam['hyperparameters']['w0'],
+                        Q=hyperparam['hyperparameters']['Q'],
+                    ) for hyperparam in solar_granulation_hyperparams
+                ])
+
+                scaled_granulation_psd = np.sum([
+                    _sho_psd(
+                        w0,
+                        S0=hyperparam['hyperparameters']['S0'],
+                        w0=hyperparam['hyperparameters']['w0'],
+                        Q=hyperparam['hyperparameters']['Q'],
+                    ) for hyperparam in scaled_granulation_hyperparams
+                ])
+
+
+                # print(f'Q={Q:.0f}', end=', ')
+
+                normalize_S0 = float(
+                    # total power in p-mode scales with H * Gamma (García 2019, Eqn 25)
+                    # 1e-7 * nu_ratio ** 2 / (2 * np.pi) * # /
+
+                    # latest test at 5:05 on Aug 29: try factor of 10 here. looks silly
+                    # on validation evolution but improves the slope in the pysyd test:
+
+                    # this works the best so far, but it's not right either (9-5-2023):
+                    #(2 * np.pi) * Q ** -2 * solar_nu_ratio ** 2 * solar_granulation_psd
+
+                    # 1/4 * solar_Q[m_ind, ell_ind, n_ind]**-2 * (
+                    #     scaled_granulation_psd / nu_peak[m_ind, ell_ind, n_ind] *
+                    #     solar_nu_peak[m_ind, ell_ind, n_ind] / solar_granulation_psd
+                    # )
+
+                    1/4 * Q**-2 * const**2 * (2 / np.pi)
+                    # (scaled_granulation_psd / solar_granulation_psd) *
+                    # (solar_nu_peak[m_ind, ell_ind, n_ind] / nu_peak[m_ind, ell_ind, n_ind]) #** 1.5
+
+                    # (2 * np.pi) * solar_Q[m_ind, ell_ind, n_ind] ** -2 * solar_nu_ratio ** 2 * solar_granulation_psd
+
+                    #(2 * np.pi) * Q**-2 * solar_nu_ratio**2 * solar_granulation_psd / 10
+                    # 2 * Q ** -2 * solar_nu_ratio ** 2 * solar_granulation_psd
+                    #* nu_max_ratio ** -2 #/ (2 * np.pi) #* (nu_max / nu_peak[m_ind, ell_ind, n_ind]) ** -2# *
+                    # (Gamma[m_ind, ell_ind, n_ind] / solar_Gamma[m_ind, ell_ind, n_ind]) ** -2
+                )
+
+                # print(f'as={amplitude_scaling}', end=' ')
+                S0 = (
+                    normalize_S0 *
+                    scale_p_mode_amp *
+                    amplitudes[ell_ind] / amplitudes.max() *
+                    # (scaled_granulation_psd / solar_granulation_psd)**0.5 #*
+                    # scaled_granulation_psd / solar_granulation_psd
+                    amplitude_scaling
+                )
+
+                if not np.any(np.isnan([S0, w0, Q])) and np.all(np.array([S0, w0, Q]) > 0):
+                    hyperparams.append(
+                        dict(
+                            hyperparameters=dict(
+                                S0=S0,
+                                w0=w0,
+                                Q=Q),
+                            metadata=dict(
+                                source="oscillation",
+                                granulation_power=scaled_granulation_psd
+                            )
+                        )
+                    )
+    max_power = lambda param: (
+        # SHO (p-mode) power
+        param['hyperparameters']['S0'] * param['hyperparameters']['Q'] ** 2 *
+        # granulation power
+        param['metadata']['granulation_power']
+    )
+    p_mode_hyperparams = sorted(hyperparams, key=max_power)[-n_kernel_terms:]
+
+    # total_power = lambda kernel: kernel.S0 * (kernel.w0 / kernel.Q)
+    # sorted_terms = sorted(terms, key=total_power)[-n_kernel_terms:]
+
+    return p_mode_hyperparams
