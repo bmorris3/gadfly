@@ -1,13 +1,2 @@
 name: gadfly
-channels:
-  - astropy
-dependencies:
-  - astropy
-  - pip:
-    - pytest-astropy
-    - celerite2
-    - matplotlib
-    - PyYAML
-    - scipy
-    - lightkurve
-    - tynt
+
