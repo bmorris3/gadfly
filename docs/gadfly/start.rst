@@ -118,11 +118,11 @@ out their key properties:
     import astropy.units as u
 
     # Some (randomly chosen) real stars from Huber et al. (2011)
-    kics = [9333184, 8416311, 8624155, 3120486, 9650527]
-    masses = [0.9, 1.5, 1.8, 1.9, 2.0] * u.M_sun
-    radii = [10.0, 2.2, 8.8, 6.7, 10.9] * u.R_sun
-    temperatures = [4919, 6259, 4944, 4929, 4986] * u.K
-    luminosities = [52.3, 6.9, 41.2, 23.9, 65.4] * u.L_sun
+    kics = [9333184, 8624155, 3120486]
+    masses = [0.9, 1.8, 1.9] * u.M_sun
+    radii = [10.0, 8.8, 6.7] * u.R_sun
+    temperatures = [4919, 4944, 4929] * u.K
+    luminosities = [52.3, 41.2, 23.9] * u.L_sun
 
     stellar_props = [
         kics, masses, radii, temperatures, luminosities
@@ -141,6 +141,8 @@ generalization of the :py:class:`~gadfly.SolarOscillatorKernel`.
 
     import matplotlib.pyplot as plt
     fig, ax = plt.subplots(figsize=(8, 4))
+
+    plot_frequencies = np.geomspace(0.1, 300, 25_000) * u.uHz
 
     # iterate over each star:
     for i, (kic, mass, rad, temp, lum) in enumerate(zip(*stellar_props)):
@@ -161,12 +163,12 @@ generalization of the :py:class:`~gadfly.SolarOscillatorKernel`.
         # Plot the kernel's PSD:
         kernel.plot(
             ax=ax,
-            n_samples=5e3
+            freq=plot_frequencies
         )
 
     # Label the legend, set the power range in plot:
     legend = ax.legend(title='Simulated kernels')
-    ax.set_ylim(1e-1, 1e6)
+    ax.set_ylim(1, 1e6)
 
 .. plot::
 
@@ -178,13 +180,15 @@ generalization of the :py:class:`~gadfly.SolarOscillatorKernel`.
 
     # Some (randomly chosen) real stars from Huber et al. (2011)
     # https://ui.adsabs.harvard.edu/abs/2011ApJ...743..143H/abstract
-    kics = [9333184, 8416311, 8624155, 3120486, 9650527]
-    masses = [0.9, 1.5, 1.8, 1.9, 2.0] * u.M_sun
-    radii = [10.0, 2.2, 8.8, 6.7, 10.9] * u.R_sun
-    temperatures = [4919, 6259, 4944, 4929, 4986] * u.K
-    luminosities = [52.3, 6.9, 41.2, 23.9, 65.4] * u.L_sun
+    kics = [9333184, 8624155, 3120486]
+    masses = [0.9, 1.8, 1.9] * u.M_sun
+    radii = [10.0, 8.8, 6.7] * u.R_sun
+    temperatures = [4919, 4944, 4929] * u.K
+    luminosities = [52.3, 41.2, 23.9] * u.L_sun
 
     stellar_props = [kics, masses, radii, temperatures, luminosities]
+
+    plot_frequencies = np.geomspace(0.1, 300, 25_000) * u.uHz
 
     # iterate over each star:
     for i, (kic, mass, radius, temperature, luminosity) in enumerate(zip(*stellar_props)):
@@ -201,12 +205,12 @@ generalization of the :py:class:`~gadfly.SolarOscillatorKernel`.
         # Plot the kernel's PSD:
         kernel.plot(
             ax=ax,
-            n_samples=5e3
+            freq=plot_frequencies
         )
 
     # Label the legend, set the power range in plot:
     legend = ax.legend(title='Simulated kernels')
-    ax.set_ylim(1e-1, 1e6)
+    ax.set_ylim(1, 1e6)
 
 The resulting plot has "simulated" power spectra for the five stars, built by
 scaling the observed solar oscillations and granulation, which were parameterized by

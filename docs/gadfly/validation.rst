@@ -108,14 +108,13 @@ Now we'll call a big loop to do most of the work:
         # Compute the power spectrum:
         ps = PowerSpectrum.from_light_curve(
             lc,
-            name=target_name,
-            detrend_poly_order=1
+            name=target_name
         )
 
         # Plot the binned PSD and the kernel PSD. This plot function
         # takes lots of keyword arguments so you can fine-tune your
         # plots:
-        obs_kw = dict(color='k', marker='.', lw=0)
+        obs_kw = dict(color='k', marker='.', lw=0, alpha=0.4, zorder=-10)
 
         ps.bin(1_500).plot(
             ax=axis,
@@ -123,10 +122,10 @@ Now we'll call a big loop to do most of the work:
             freq=ps.frequency,
             obs_kwargs=obs_kw,
             legend=True,
-            n_samples=5e3,
+            n_samples=1e4,
             label_kernel='Pred. kernel',
             label_obs=target_name,
-            kernel_kwargs=dict(color=f'C{i}', alpha=0.9),
+            kernel_kwargs=dict(color=f'C{i}', lw=1.5),
             title=""
         )
 
@@ -196,22 +195,21 @@ Ok, let's see the output:
         # Compute the power spectrum:
         ps = PowerSpectrum.from_light_curve(
             lc, name=target_name,
-            detrend_poly_order=1
         )
 
-        obs_kw = dict(color='k', marker='.', lw=0)
+        obs_kw = dict(color='k', marker='.', lw=0, alpha=0.4, zorder=-10)
 
         # Plot the binned PSD of the light curve:
-        ps.bin(1_500).plot(
+        ps.bin(1_000).plot(
             ax=axis,
             kernel=kernel,
             freq=ps.frequency,
             legend=True,
-            n_samples=5e3,
+            n_samples=1e4,
             label_kernel='Pred. kernel',
             label_obs=target_name,
             obs_kwargs=obs_kw,
-            kernel_kwargs=dict(color=f'C{i}', alpha=0.9),
+            kernel_kwargs=dict(color=f'C{i}', lw=1.5),
             title=""
         )
 
@@ -252,17 +250,17 @@ kernel:
 
 .. code-block:: python
 
-        light_curve = search_lightcurve(
-            name, mission='Kepler', quarter=range(6), cadence='short'
-        ).download_all()
+    light_curve = search_lightcurve(
+        name, mission='Kepler', quarter=range(6), cadence='short'
+    ).download_all()
 
-        kernel = (
-            # kernel for scaled stellar oscillations and granulation
-            StellarOscillatorKernel(hp, texp=1 * u.min) +
+    kernel = (
+        # kernel for scaled stellar oscillations and granulation
+        StellarOscillatorKernel(hp, texp=1 * u.min) +
 
-            # add in a kernel for Kepler shot noise
-            ShotNoiseKernel.from_kepler_light_curve(light_curve)
-        )
+        # add in a kernel for Kepler shot noise
+        ShotNoiseKernel.from_kepler_light_curve(light_curve)
+    )
 
 Let's now run the adapted code on the first two stars (click the "Source code" link below
 to see the code that generates this plot):
@@ -320,11 +318,11 @@ to see the code that generates this plot):
         ps = PowerSpectrum.from_light_curve(
             light_curve, name=name,
             detrend_poly_order=1
-        ).bin(1_500)
+        ).bin(500)
 
-        kernel_kw = dict(color=f"C{i}", alpha=0.9)
-        obs_kw = dict(color='k', marker='.', lw=0)
-        freq = np.logspace(-0.5, 4, int(1e3)) * u.uHz
+        kernel_kw = dict(color=f"C{i}", lw=1.5)
+        obs_kw = dict(color='k', marker='.', lw=0, alpha=0.5, zorder=-10)
+        freq = np.logspace(-0.5, 4, int(1e4)) * u.uHz
         kernel.plot(
             ax=axis,
             p_mode_inset=False,
@@ -332,7 +330,6 @@ to see the code that generates this plot):
             obs=ps,
             obs_kwargs=obs_kw,
             kernel_kwargs=kernel_kw,
-            n_samples=1e4,
             title=""
         )
 
@@ -407,7 +404,7 @@ Kepler would observe for each target.
         ps = PowerSpectrum.from_light_curve(
             light_curve, name=name,
             detrend_poly_order=3,
-        ).bin(500)
+        ).bin(100)
 
         # adjust some plot settings:
         kernel_kw = dict(color=f"C{i}", alpha=0.9)

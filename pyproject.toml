@@ -16,11 +16,10 @@ authors = [
   { name = "Brett M. Morris", email = "morrisbrettm@gmail.com" },
 ]
 dependencies = [
-    "numpy",
+    "numpy<2",  # until lightkurve fixes are available
     "celerite2",
     "astropy",
     "matplotlib",
-    "PyYAML",
     "scipy",
     "lightkurve",
     "tynt",
@@ -32,13 +31,10 @@ test = [
     "pytest",
     "pytest-doctestplus",
     "pytest-cov",
-    "scipy",
 ]
 docs = [
     "sphinx",
     "sphinx-automodapi",
-    "scipy",
-    "lightkurve",
     "sphinx-book-theme>=0.3.3",
     "numpydoc",
 ]

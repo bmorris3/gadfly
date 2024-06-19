@@ -10,11 +10,6 @@ This is the documentation for ``gadfly``, a Python package for generating photom
 stars with granulation and p-mode oscillations. The source code is available
 `on GitHub <https://github.com/bmorris3/gadfly>`_.
 
-.. note::
-
-    ``gadfly`` is under active development. If you run into any issues, please `let us
-    know on GitHub <https://github.com/bmorris3/gadfly/issues>`_.
-
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
